@@ -1,0 +1,4 @@
+// Root build file - declares the plugin versions used by the :app module.
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}

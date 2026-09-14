@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.SmartSolar" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/solar_amber</item>
+        <item name="colorPrimaryDark">@color/solar_amber_dark</item>
+        <item name="colorSecondary">@color/grid_navy</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/grid_navy</item>
+        <item name="android:windowBackground">@color/surface</item>
+    </style>
+</resources>

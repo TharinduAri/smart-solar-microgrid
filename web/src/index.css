@@ -1,0 +1,27 @@
+/* Small amount of project styling layered on top of Bootstrap 5. */
+
+:root {
+  --ss-brand: #f59e0b;
+  --ss-brand-dark: #b45309;
+}
+
+body {
+  background-color: #f6f7fb;
+}
+
+.ss-navbar {
+  background: linear-gradient(90deg, var(--ss-brand-dark), var(--ss-brand));
+}
+
+.ss-stat-card {
+  border: none;
+  border-left: 4px solid var(--ss-brand);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+
+.ss-login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1f2937, #0f172a);
+}

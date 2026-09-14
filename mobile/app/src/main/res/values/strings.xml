@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Smart Solar</string>
+    <string name="tagline">Microgrid Trading</string>
+
+    <string name="sign_in">Sign in</string>
+    <string name="sign_out">Sign out</string>
+    <string name="register">Create prosumer account</string>
+    <string name="no_account">New prosumer? Create an account</string>
+
+    <string name="hint_username">Email or NIC</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_nic">NIC number</string>
+    <string name="hint_full_name">Full name</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_phone">Phone number</string>
+    <string name="hint_address">Address</string>
+    <string name="hint_status_filter">Filter by status (Pending / Approved / Completed)</string>
+
+    <string name="welcome_user">Welcome, %1$s</string>
+    <string name="pending_reservations">Pending reservations</string>
+    <string name="approved_reservations">Approved upcoming</string>
+    <string name="my_bookings">My bookings</string>
+    <string name="nearby_nodes">Nearby microgrid nodes</string>
+    <string name="request_deactivation">Request account deactivation</string>
+    <string name="scan_qr">Scan transaction QR</string>
+    <string name="all_bookings">Power trading bookings</string>
+    <string name="node_map">Microgrid node map</string>
+    <string name="search">Search</string>
+
+    <string name="scan_prompt">Point the camera at the prosumer QR code</string>
+    <string name="transfer_completed">Energy transfer finalised.</string>
+    <string name="invalid_qr">That QR code is not a valid transaction code.</string>
+    <string name="registration_pending">Account created. A Backoffice officer must activate it before you can sign in.</string>
+    <string name="deactivation_requested">Deactivation request sent to the Backoffice team.</string>
+    <string name="error_fill_all_fields">Please fill in all the required fields.</string>
+</resources>

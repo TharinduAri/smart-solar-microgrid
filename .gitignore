@@ -1,0 +1,25 @@
+# ---- .NET / Web API ----
+backend/**/bin/
+backend/**/obj/
+backend/**/publish/
+*.user
+
+# ---- React web client ----
+web/node_modules/
+web/dist/
+web/.env
+
+# ---- Android ----
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/local.properties
+mobile/.idea/
+*.iml
+*.apk
+
+# ---- Editors / OS ----
+.vs/
+.vscode/
+.DS_Store
+Thumbs.db
