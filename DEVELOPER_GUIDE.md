@@ -227,7 +227,8 @@ If the preferred model encounters rate limits (HTTP 429), regional unavailabilit
 ### How it operates:
 1. When a PR is opened or reopened, the workflow checks out the repository and extracts a clean git diff (excluding lockfiles, binary assets, and build directories).
 2. The diff is analyzed by Gemini via the REST API using [.github/scripts/generate_pr_summary.py](.github/scripts/generate_pr_summary.py).
-3. The AI generates a structured markdown summary:
+3. The AI generates:
+   - **Conventional PR Title**: Standardizes the PR title using Conventional Commits syntax (e.g. `feat(stations): add battery slot management and node deletion`), automatically updating the PR title via GitHub CLI.
    - **Overview & Purpose**: High-level explanation of what changed and why.
    - **Key Changes by Component**: Grouped breakdown (e.g. Backend API, Web App, Documentation).
    - **Verification Checklist**: Targeted checklist for PR reviewers.

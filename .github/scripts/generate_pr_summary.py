@@ -33,6 +33,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 def main():
     diff_file = sys.argv[1] if len(sys.argv) > 1 else "diff.txt"
     output_file = sys.argv[2] if len(sys.argv) > 2 else "pr_summary.md"
+    title_file = sys.argv[3] if len(sys.argv) > 3 else "pr_title.txt"
 
     if not os.path.exists(diff_file):
         print(f"Error: Diff file '{diff_file}' not found.")
@@ -45,6 +46,8 @@ def main():
         print("Diff is empty. Writing default placeholder.")
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("No significant code changes detected in diff.")
+        with open(title_file, "w", encoding="utf-8") as f:
+            f.write("")
         return
 
     # Check for missing API Key
@@ -57,6 +60,8 @@ def main():
                 "(**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) "
                 "to enable automated PR summaries with Google Gemini.\n"
             )
+        with open(title_file, "w", encoding="utf-8") as f:
+            f.write("")
         return
 
     # Truncate if diff exceeds safety limit
@@ -72,14 +77,16 @@ def main():
 
         prompt = (
             "You are an expert software engineer and technical lead.\n"
-            "Analyze the following git diff and generate a clear, professional Pull Request summary.\n\n"
+            "Analyze the following git diff and generate a clear, professional Pull Request title and summary.\n\n"
             "Requirements:\n"
-            "1. Write a 2-3 sentence overview explaining WHAT changed and WHY.\n"
-            "2. Break down the key changes grouped logically by component (e.g. Backend API, Web App, Mobile, Documentation).\n"
-            "3. Provide a practical verification / testing checklist based on the changes.\n"
-            "4. Do NOT use any emojis anywhere in your response.\n"
-            "5. Output STRICTLY the markdown template below. Do not add conversational intro/outro.\n\n"
+            "1. Output a concise Conventional Commit title on the very first line starting with 'TITLE: <type>(<scope>): <subject>' (e.g. 'TITLE: feat(stations): add battery slot management and node deletion'). Keep title under 72 chars.\n"
+            "2. Write a 2-3 sentence overview explaining WHAT changed and WHY.\n"
+            "3. Break down the key changes grouped logically by component (e.g. Backend API, Web App, Mobile, Documentation).\n"
+            "4. Provide a practical verification / testing checklist based on the changes.\n"
+            "5. Do NOT use any emojis anywhere in your response.\n"
+            "6. Output STRICTLY the markdown template below. Do not add conversational intro/outro.\n\n"
             "Template to follow:\n"
+            "TITLE: <type>(<scope>): <concise subject>\n\n"
             "## Pull Request Summary\n\n"
             "### Overview & Purpose\n"
             "<2-3 sentence summary>\n\n"
@@ -123,8 +130,25 @@ def main():
                     parts = content.get("parts", [])
                     summary = parts[0].get("text", "").strip() if parts else ""
                     if summary:
+                        # Extract TITLE: line
+                        extracted_title = ""
+                        body_lines = []
+                        for line in summary.splitlines():
+                            if not extracted_title and line.strip().upper().startswith("TITLE:"):
+                                extracted_title = line.strip()[6:].strip()
+                            else:
+                                body_lines.append(line)
+
+                        clean_summary = "\n".join(body_lines).strip()
+
                         with open(output_file, "w", encoding="utf-8") as f:
-                            f.write(summary)
+                            f.write(clean_summary if clean_summary else summary)
+
+                        if extracted_title:
+                            with open(title_file, "w", encoding="utf-8") as f:
+                                f.write(extracted_title)
+                            print(f"Extracted PR title: '{extracted_title}' written to '{title_file}'.")
+
                         print(f"Successfully generated summary in '{output_file}' using model '{model}'.")
                         return
 
