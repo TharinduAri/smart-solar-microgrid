@@ -180,3 +180,27 @@ net start MongoDB
   ```powershell
   dotnet user-secrets remove "MongoDbSettings:ConnectionString" --project SmartSolar.Api
   ```
+
+---
+
+## 6. Git Hooks (Pre-Commit & Commit-Msg Enforcement)
+
+This repository includes automated Git hooks in the `.githooks/` folder to ensure broken builds and messy commit messages never reach version control.
+
+### Activating the Hooks (For all team members)
+Run once after cloning:
+```powershell
+git config core.hooksPath .githooks
+```
+
+### What is enforced on every commit:
+1. **Pre-Commit Hook (`.githooks/pre-commit`)**:
+   - Compiles the C# backend (`dotnet build backend/SmartSolar.Api -t:Compile --nologo`).
+   - Compiles the React web client (`npm --prefix web run build`).
+   - **If either build fails**, the commit is immediately rejected and aborted.
+2. **Commit-Msg Hook (`.githooks/commit-msg`)**:
+   - Validates that the commit message adheres to **Conventional Commits**:
+     `<type>(<scope>): <description>`
+   - Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+   - **If the format is invalid**, the commit is rejected with a helpful guide.
+
