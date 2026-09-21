@@ -30,7 +30,7 @@ jobs:
           git fetch origin ${{ github.base_ref }}
 
           echo "Generating filtered diff against origin/${{ github.base_ref }}..."
-          git diff origin/${{ github.base_ref }}...HEAD \
+          git diff origin/${{ github.base_ref }}...HEAD -- \
             ':!package-lock.json' \
             ':!*.lock' \
             ':!*.svg' \

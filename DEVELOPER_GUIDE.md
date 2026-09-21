@@ -242,6 +242,23 @@ If the preferred model encounters rate limits (HTTP 429), regional unavailabilit
 4. *(Optional)* Override the default model by adding a repository variable or environment variable named `GEMINI_MODEL`.
 5. *Note: If the secret is not configured, the action gracefully leaves an informational reminder on the PR without failing the build pipeline.*
 
+---
+
+## 8. Continuous Integration & Build Verification (GitHub Actions)
+
+The repository runs automated build verification in [.github/workflows/build-verification.yml](.github/workflows/build-verification.yml) on all pull requests and pushes to `main`, `develop`, and `feature/**` branches.
+
+### Verification Pipelines:
+1. **Backend Build Job (`backend-build`)**:
+   - Environment: `ubuntu-latest` with **.NET 9.0 SDK**.
+   - Validates dependency restoration (`dotnet restore backend/SmartSolar.sln`).
+   - Compiles all C# projects under `Release` configuration to catch compile-time errors, breaking API changes, or missing dependencies.
+2. **Frontend Build Job (`frontend-build`)**:
+   - Environment: `ubuntu-latest` with **Node.js 20**.
+   - Installs clean dependencies (`npm --prefix web ci` with npm cache).
+   - Builds production Vite bundle (`npm --prefix web run build`) to verify React JSX syntax, bundling, and CSS asset generation.
+
+
 
 
 
