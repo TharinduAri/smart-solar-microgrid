@@ -1,0 +1,64 @@
+name: Open-Source AI PR Summary
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-summary:
+    name: Generate Summary with Open-Source AI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install and launch Ollama
+        run: |
+          echo "Installing Ollama..."
+          curl -fsSL https://ollama.com/install.sh | sh
+          echo "Pulling lightweight open-source coding model (qwen2.5-coder:1.5b)..."
+          ollama pull qwen2.5-coder:1.5b
+
+      - name: Extract sanitized Git diff
+        run: |
+          echo "Fetching target base branch: origin/${{ github.base_ref }}"
+          git fetch origin ${{ github.base_ref }}
+
+          echo "Generating filtered diff against origin/${{ github.base_ref }}..."
+          git diff origin/${{ github.base_ref }}...HEAD \
+            ':!package-lock.json' \
+            ':!*.lock' \
+            ':!*.svg' \
+            ':!*.png' \
+            ':!*.ico' \
+            ':!dist/**' \
+            ':!bin/**' \
+            ':!obj/**' > diff.txt
+
+          echo "Diff generated. Size in bytes: $(wc -c < diff.txt)"
+
+      - name: Generate PR summary with AI model
+        run: |
+          python3 .github/scripts/generate_pr_summary.py diff.txt pr_summary.md
+
+      - name: Publish summary to Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          EXISTING_BODY=$(gh pr view "$PR_NUMBER" --json body -q .body 2>/dev/null || echo "")
+
+          if [ -z "$EXISTING_BODY" ] || [ "$EXISTING_BODY" = "null" ]; then
+            echo "PR body is empty. Setting PR description..."
+            gh pr edit "$PR_NUMBER" --body-file pr_summary.md
+          else
+            echo "PR body already contains content. Adding AI summary as a comment..."
+            gh pr comment "$PR_NUMBER" --body-file pr_summary.md
+          fi

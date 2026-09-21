@@ -204,3 +204,20 @@ git config core.hooksPath .githooks
    - Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
    - **If the format is invalid**, the commit is rejected with a helpful guide.
 
+---
+
+## 7. Automated AI Pull Request Summaries (GitHub Actions)
+
+The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml](.github/workflows/pr-ai-summary.yml) that uses an **open-source AI coding model** (`qwen2.5-coder:1.5b` running self-contained on Ollama) to summarize pull requests automatically.
+
+### How it operates:
+1. When a PR is opened against `develop` or `main`, the workflow extracts a clean git diff (stripping lockfiles, assets, and build artifacts).
+2. The diff is passed to the open-source model running directly inside the GitHub Actions runner.
+3. The AI generates a structured markdown breakdown:
+   - **Overview & Context**: What changed and why.
+   - **Key Changes by Component**: Grouped breakdown of modifications.
+   - **Verification Checklist**: Suggested manual testing steps.
+4. If the PR description was left blank, the action updates the PR description directly; if content already exists, it appends the AI summary as a PR review comment.
+5. **Cost & Privacy**: 100% free, requires zero external API keys or subscriptions, and code never leaves the GitHub Actions runner environment.
+
+
