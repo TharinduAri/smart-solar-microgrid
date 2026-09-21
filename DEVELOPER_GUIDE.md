@@ -206,18 +206,30 @@ git config core.hooksPath .githooks
 
 ---
 
-## 7. Automated AI Pull Request Summaries (GitHub Actions)
+## 7. Automated AI Pull Request Summaries (GitHub Actions & Gemini)
 
-The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml](.github/workflows/pr-ai-summary.yml) that uses an **open-source AI coding model** (`qwen2.5-coder:1.5b` running self-contained on Ollama) to summarize pull requests automatically.
+The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml](.github/workflows/pr-ai-summary.yml) that uses **Google Gemini** (`gemini-1.5-flash`) to generate structured pull request summaries automatically upon PR creation.
+
+### Why Google Gemini Flash?
+- **Speed**: Generates summaries in ~1-2 seconds compared to minutes for local runner models.
+- **Context Capacity**: 1,000,000+ token context window, effortlessly handling large diffs and refactorings without truncating critical logic.
+- **Cost**: Generous free tier available via Google AI Studio.
 
 ### How it operates:
-1. When a PR is opened against `develop` or `main`, the workflow extracts a clean git diff (stripping lockfiles, assets, and build artifacts).
-2. The diff is passed to the open-source model running directly inside the GitHub Actions runner.
-3. The AI generates a structured markdown breakdown:
-   - **Overview & Context**: What changed and why.
-   - **Key Changes by Component**: Grouped breakdown of modifications.
-   - **Verification Checklist**: Suggested manual testing steps.
-4. If the PR description was left blank, the action updates the PR description directly; if content already exists, it appends the AI summary as a PR review comment.
-5. **Cost & Privacy**: 100% free, requires zero external API keys or subscriptions, and code never leaves the GitHub Actions runner environment.
+1. When a PR is opened or reopened, the workflow checks out the repository and extracts a clean git diff (excluding lockfiles, binary assets, and build directories).
+2. The diff is analyzed by Gemini via the REST API using [.github/scripts/generate_pr_summary.py](.github/scripts/generate_pr_summary.py).
+3. The AI generates a structured markdown summary:
+   - **🎯 Overview & Purpose**: High-level explanation of what changed and why.
+   - **🔍 Key Changes by Component**: Grouped breakdown (e.g. Backend API, Web App, Documentation).
+   - **🧪 Verification Checklist**: Targeted checklist for PR reviewers.
+4. If the PR description is blank, the action populates it directly; if already filled out, it posts the AI analysis as a PR comment.
+
+### Setting up the Gemini Secret (Repository Admins)
+1. Generate a free API key at [Google AI Studio](https://aistudio.google.com/).
+2. In your GitHub repository, navigate to:
+   **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+3. Create a secret named **`GEMINI_API_KEY`** and paste your API key.
+4. *Note: If the secret is not configured, the action gracefully leaves an informational reminder on the PR without failing the build pipeline.*
+
 
 

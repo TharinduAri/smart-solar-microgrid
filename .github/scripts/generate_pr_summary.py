@@ -3,9 +3,9 @@
 -----------------------------------------------------------------------------
 Script      : generate_pr_summary.py
 Project     : Smart Solar Microgrid Trading System
-Description : Reads the filtered git diff, constructs an AI prompt with token
-              guardrails, calls the local open-source Ollama model, and writes
-              a structured Pull Request summary markdown document.
+Description : Reads the filtered git diff, constructs an AI prompt, calls the
+              Google Gemini API, and writes a structured Pull Request summary
+              markdown document.
 -----------------------------------------------------------------------------
 """
 
@@ -13,10 +13,11 @@ import json
 import os
 import sys
 import urllib.request
+import urllib.error
 
-MAX_DIFF_CHARS = 12000
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:1.5b")
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/api/generate")
+MAX_DIFF_CHARS = 40000  # Gemini Flash has a large context window (1M tokens)
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 def main():
     diff_file = sys.argv[1] if len(sys.argv) > 1 else "diff.txt"
@@ -35,66 +36,98 @@ def main():
             f.write("No significant code changes detected in diff.")
         return
 
-    # Truncate large diffs to avoid exceeding model context window
-    if len(diff_text) > MAX_DIFF_CHARS:
-        diff_text = diff_text[:MAX_DIFF_CHARS] + "\n\n... [Remaining diff truncated to fit model context] ..."
+    # Check for missing API Key
+    if not GEMINI_API_KEY:
+        print("Warning: GEMINI_API_KEY is not set.")
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(
+                "## 📋 Pull Request Summary\n\n"
+                "> ⚠️ **Gemini API Key Required**: Please add `GEMINI_API_KEY` to your repository secrets "
+                "(**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) "
+                "to enable automated PR summaries with Google Gemini.\n"
+            )
+        return
 
-    system_prompt = (
-        "You are an expert senior software engineer and code reviewer.\n"
-        "Analyze the following git diff and generate a concise, professional Pull Request description.\n\n"
+    # Truncate if diff exceeds safety limit
+    if len(diff_text) > MAX_DIFF_CHARS:
+        diff_text = diff_text[:MAX_DIFF_CHARS] + "\n\n... [Remaining diff truncated for prompt safety] ..."
+
+    prompt = (
+        "You are an expert software engineer and technical lead.\n"
+        "Analyze the following git diff and generate a clear, professional Pull Request summary.\n\n"
         "Requirements:\n"
-        "1. Write a clear summary explaining WHAT changed and WHY.\n"
-        "2. Break down the key changes grouped logically by component (Backend, Web, Mobile, Docs).\n"
-        "3. Include a concise testing / verification checklist.\n"
-        "4. Follow the markdown structure below strictly. Do not hallucinate files not present in the diff.\n\n"
-        "Structure:\n"
-        "## 📋 Pull Request Summary\n\n"
-        "### 🎯 Overview & Purpose\n"
-        "<2-3 sentence overview>\n\n"
-        "### 🔍 Key Changes by Component\n"
-        "- **Component**: Details of changes.\n\n"
-        "### 🧪 Verification & Testing\n"
-        "- [ ] Verification step 1\n"
-        "- [ ] Verification step 2\n\n"
+        "1. Write a 2-3 sentence overview explaining WHAT changed and WHY.\n"
+        "2. Break down the key changes grouped logically by component (e.g. Backend API, Web App, Mobile, Documentation).\n"
+        "3. Provide a practical verification / testing checklist based on the changes.\n"
+        "4. Output STRICTLY the markdown template below. Do not add conversational intro/outro.\n\n"
+        "Template to follow:\n"
+        "## Pull Request Summary\n\n"
+        "### Overview & Purpose\n"
+        "<2-3 sentence summary>\n\n"
+        "### Key Changes by Component\n"
+        "- **Component Name**: Description of key changes\n\n"
+        "### Verification Checklist\n"
+        "- [ ] Test item 1\n"
+        "- [ ] Test item 2\n\n"
         "---\n"
-        f"> 🤖 *Generated automatically by Open-Source AI (`{OLLAMA_MODEL}`)*\n"
+        f">  *Generated automatically by Google Gemini (`{GEMINI_MODEL}`)*\n\n"
+        f"Git Diff:\n```diff\n{diff_text}\n```"
     )
 
     payload = {
-        "model": OLLAMA_MODEL,
-        "prompt": f"{system_prompt}\n\nGit Diff:\n```diff\n{diff_text}\n```\n",
-        "stream": False,
-        "options": {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
             "temperature": 0.2,
-            "top_p": 0.9
+            "maxOutputTokens": 2048
         }
     }
 
-    print(f"Sending diff ({len(diff_text)} chars) to {OLLAMA_MODEL}...")
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    print(f"Calling Google Gemini API ({GEMINI_MODEL}) with {len(diff_text)} chars diff...")
 
     try:
         req = urllib.request.Request(
-            OLLAMA_URL,
+            api_url,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=180) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode("utf-8"))
-            summary = result.get("response", "").strip()
+            candidates = result.get("candidates", [])
+            if candidates:
+                content = candidates[0].get("content", {})
+                parts = content.get("parts", [])
+                summary = parts[0].get("text", "").strip() if parts else ""
+            else:
+                summary = "Failed to extract summary from Gemini response."
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(summary)
 
         print(f"Successfully generated summary in '{output_file}'.")
 
+    except urllib.error.HTTPError as ex:
+        err_msg = ex.read().decode("utf-8")
+        print(f"Gemini API HTTP Error {ex.code}: {err_msg}", file=sys.stderr)
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(
+                f"## 📋 Pull Request Summary\n\n"
+                f"*Error calling Gemini API (HTTP {ex.code}). Please check your GEMINI_API_KEY repository secret.*\n"
+            )
     except Exception as ex:
-        print(f"Error calling Ollama API: {ex}", file=sys.stderr)
-        # Fallback graceful markdown if inference fails
+        print(f"Error calling Gemini API: {ex}", file=sys.stderr)
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(
                 "## 📋 Pull Request Summary\n\n"
-                "*Note: Automated AI summary generation timed out or encountered an error. Please refer to git commit history.*\n"
+                "*Error calling Gemini API. Please refer to commit history.*\n"
             )
 
 if __name__ == "__main__":
     main()
+

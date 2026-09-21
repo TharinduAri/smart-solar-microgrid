@@ -1,4 +1,4 @@
-name: Open-Source AI PR Summary
+name: Gemini AI PR Summary
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   ai-summary:
-    name: Generate Summary with Open-Source AI
+    name: Generate Summary with Google Gemini
     runs-on: ubuntu-latest
 
     steps:
@@ -19,12 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install and launch Ollama
-        run: |
-          echo "Installing Ollama..."
-          curl -fsSL https://ollama.com/install.sh | sh
-          echo "Pulling lightweight open-source coding model (qwen2.5-coder:1.5b)..."
-          ollama pull qwen2.5-coder:1.5b
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
       - name: Extract sanitized Git diff
         run: |
@@ -44,7 +42,10 @@ jobs:
 
           echo "Diff generated. Size in bytes: $(wc -c < diff.txt)"
 
-      - name: Generate PR summary with AI model
+      - name: Generate PR summary with Google Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-1.5-flash
         run: |
           python3 .github/scripts/generate_pr_summary.py diff.txt pr_summary.md
 
