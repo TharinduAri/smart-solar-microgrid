@@ -52,8 +52,8 @@ def main():
         print("Warning: GEMINI_API_KEY is not set.")
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(
-                "## 📋 Pull Request Summary\n\n"
-                "> ⚠️ **Gemini API Key Required**: Please add `GEMINI_API_KEY` to your repository secrets "
+                "## Pull Request Summary\n\n"
+                "> **Gemini API Key Required**: Please add `GEMINI_API_KEY` to your repository secrets "
                 "(**Settings** → **Secrets and variables** → **Actions** → **New repository secret**) "
                 "to enable automated PR summaries with Google Gemini.\n"
             )
@@ -77,18 +77,19 @@ def main():
             "1. Write a 2-3 sentence overview explaining WHAT changed and WHY.\n"
             "2. Break down the key changes grouped logically by component (e.g. Backend API, Web App, Mobile, Documentation).\n"
             "3. Provide a practical verification / testing checklist based on the changes.\n"
-            "4. Output STRICTLY the markdown template below. Do not add conversational intro/outro.\n\n"
+            "4. Do NOT use any emojis anywhere in your response.\n"
+            "5. Output STRICTLY the markdown template below. Do not add conversational intro/outro.\n\n"
             "Template to follow:\n"
-            "## 📋 Pull Request Summary\n\n"
-            "### 🎯 Overview & Purpose\n"
+            "## Pull Request Summary\n\n"
+            "### Overview & Purpose\n"
             "<2-3 sentence summary>\n\n"
-            "### 🔍 Key Changes by Component\n"
+            "### Key Changes by Component\n"
             "- **Component Name**: Description of key changes\n\n"
-            "### 🧪 Verification Checklist\n"
+            "### Verification Checklist\n"
             "- [ ] Test item 1\n"
             "- [ ] Test item 2\n\n"
             "---\n"
-            f"> 🤖 *Generated automatically by Google Gemini (`{model}`)*\n\n"
+            f"> *Generated automatically by Google Gemini (`{model}`)*\n\n"
             f"Git Diff:\n```diff\n{diff_text}\n```"
         )
 
@@ -143,7 +144,7 @@ def main():
     # Fallback if all candidate models failed
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(
-            f"## 📋 Pull Request Summary\n\n"
+            f"## Pull Request Summary\n\n"
             f"*Error calling Gemini API across models: {SUPPORTED_MODELS} (Last error: {last_error}). "
             f"Please check your GEMINI_API_KEY repository secret.*\n"
         )

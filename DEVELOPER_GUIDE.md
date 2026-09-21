@@ -228,9 +228,9 @@ If the preferred model encounters rate limits (HTTP 429), regional unavailabilit
 1. When a PR is opened or reopened, the workflow checks out the repository and extracts a clean git diff (excluding lockfiles, binary assets, and build directories).
 2. The diff is analyzed by Gemini via the REST API using [.github/scripts/generate_pr_summary.py](.github/scripts/generate_pr_summary.py).
 3. The AI generates a structured markdown summary:
-   - **🎯 Overview & Purpose**: High-level explanation of what changed and why.
-   - **🔍 Key Changes by Component**: Grouped breakdown (e.g. Backend API, Web App, Documentation).
-   - **🧪 Verification Checklist**: Targeted checklist for PR reviewers.
+   - **Overview & Purpose**: High-level explanation of what changed and why.
+   - **Key Changes by Component**: Grouped breakdown (e.g. Backend API, Web App, Documentation).
+   - **Verification Checklist**: Targeted checklist for PR reviewers.
 4. If the PR description is blank, the action populates it directly; if already filled out, it posts the AI analysis as a PR comment.
 
 ### Setting up the Gemini Secret (Repository Admins)
