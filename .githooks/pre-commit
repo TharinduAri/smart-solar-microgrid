@@ -1,0 +1,43 @@
+#!/bin/sh
+# -----------------------------------------------------------------------------
+# Git Pre-Commit Hook: Smart Solar Microgrid Trading System
+# Verifies that both the .NET backend solution and the React web application
+# compile without errors before permitting any commit.
+# -----------------------------------------------------------------------------
+
+echo "========================================================"
+echo " [Git Hook] Running Pre-Commit Build Validations..."
+echo "========================================================"
+
+# 1. Verify .NET Backend Build (Compile target validates all C# code without locking running processes)
+echo "[1/2] Compiling C# Web API (backend/SmartSolar.Api)..."
+dotnet build backend/SmartSolar.Api/SmartSolar.Api.csproj -t:Compile --nologo
+BACKEND_STATUS=$?
+
+if [ $BACKEND_STATUS -ne 0 ]; then
+    echo ""
+    echo "❌ [PRE-COMMIT ERROR] Backend build failed with exit code $BACKEND_STATUS."
+    echo "   Commit aborted! Please fix compilation errors before committing."
+    echo ""
+    exit 1
+fi
+echo "✓ Backend build passed."
+
+# 2. Verify React Frontend Build
+echo "[2/2] Compiling React web client (web/)..."
+npm --prefix web run build
+FRONTEND_STATUS=$?
+
+if [ $FRONTEND_STATUS -ne 0 ]; then
+    echo ""
+    echo "❌ [PRE-COMMIT ERROR] Web client build failed with exit code $FRONTEND_STATUS."
+    echo "   Commit aborted! Please fix build/transpilation errors before committing."
+    echo ""
+    exit 1
+fi
+echo "✓ Web client build passed."
+
+echo "========================================================"
+echo " ✓ All build checks passed. Proceeding with commit."
+echo "========================================================"
+exit 0

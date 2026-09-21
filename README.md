@@ -107,23 +107,36 @@ Open the `mobile/` folder in Android Studio (compileSdk 35, minSdk 26, Java 17).
 
 ---
 
-## Current status of this scaffold
+> 📖 **Developer Guide**: For complete step-by-step setup, account credentials, and testing procedures across all services, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
+
+---
+
+## Current status of the project
 
 Working end to end:
 
-- JWT login with role-based routing (web + mobile), prosumer registration by NIC
-- Web: dashboard counts, node list/create/activate, reservation search/approve/cancel,
-  prosumer activation, web user creation
-- Mobile: login, registration, prosumer dashboard counts, booking list with filter,
-  Google Maps node markers, operator QR scan → server verification
-- API: full CRUD for users, nodes, slots and reservations with all business rules
+- **Backend Web API**:
+  - Full CRUD for users, stations, slots, and reservations enforcing all business rules (7-day window, 12-hour notice, station deactivation guard).
+  - Multi-collection automated seed data (`Users`, `SolarStationInfo`, `EnergyBookingSlots`, `EnergyReservations`).
+  - .NET User Secrets setup for database credential isolation.
+  - IIS configuration via `web.config` for in-process hosting.
+- **Web Application**:
+  - JWT authentication with role-based routing (Backoffice vs. Grid Operator).
+  - Operations Dashboard with live stat cards, recent trading activity, and station capacity.
+  - Microgrid Node Management: node create, edit, delete, activate/deactivate.
+  - Station Slot Management: schedule booking windows, live available bay counters, edit/delete slots.
+  - Energy Slot Reservations: create booking, reschedule/update, approve, cancel, search filters, and QR inspection.
+  - Prosumer Management: activate pending accounts, edit prosumer profiles, review deactivation requests.
+  - Web User Management: create Backoffice and Grid Operator users.
+- **Mobile Application**:
+  - Login, registration by NIC (stored as primary key).
+  - Prosumer dashboard counts, booking list with filter.
+  - Google Maps node markers plotted from stored coordinates.
+  - Operator QR scan with server-side verification.
 
-Left to build out (marked `TODO` in the code):
-
-- Web: edit modals for nodes/prosumers, slot management panel per node
-- Mobile: booking create/update/cancel screens, summary page after each action,
-  QR display screen using `util/QrCodeGenerator`
-- Report deliverables: UI screenshots, high-level/use-case/DFD diagrams, references
+Remaining tasks:
+- Mobile: booking create/update/cancel screens, summary page after each action, QR display screen using `util/QrCodeGenerator`.
+- Report deliverables: UI screenshots, high-level/use-case/DFD diagrams, references.
 
 ---
 
