@@ -208,12 +208,21 @@ git config core.hooksPath .githooks
 
 ## 7. Automated AI Pull Request Summaries (GitHub Actions & Gemini)
 
-The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml](.github/workflows/pr-ai-summary.yml) that uses **Google Gemini** (`gemini-1.5-flash`) to generate structured pull request summaries automatically upon PR creation.
+The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml](.github/workflows/pr-ai-summary.yml) that uses **Google Gemini** models to generate structured pull request summaries automatically upon PR creation.
 
-### Why Google Gemini Flash?
-- **Speed**: Generates summaries in ~1-2 seconds compared to minutes for local runner models.
-- **Context Capacity**: 1,000,000+ token context window, effortlessly handling large diffs and refactorings without truncating critical logic.
-- **Cost**: Generous free tier available via Google AI Studio.
+### Supported Models (`GEMINI_MODELS`)
+The summary script ([.github/scripts/generate_pr_summary.py](.github/scripts/generate_pr_summary.py)) supports the following models with automated fallback:
+- `gemini-3.8-flash` *(Default)*
+- `gemini-3.7-flash`
+- `gemini-3.6-flash`
+- `gemini-3.5-flash`
+- `gemini-3.5-flash-lite`
+- `gemini-3.1-flash-lite`
+- `gemini-3.1-pro-preview`
+- `gemini-3-flash-preview`
+
+### Automated Model Fallback
+If the preferred model encounters rate limits (HTTP 429), regional unavailability, or deprecation (HTTP 404), the script automatically cascades to the next supported model in the list without failing the CI run.
 
 ### How it operates:
 1. When a PR is opened or reopened, the workflow checks out the repository and extracts a clean git diff (excluding lockfiles, binary assets, and build directories).
@@ -229,7 +238,9 @@ The repository includes a GitHub Action in [.github/workflows/pr-ai-summary.yml]
 2. In your GitHub repository, navigate to:
    **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
 3. Create a secret named **`GEMINI_API_KEY`** and paste your API key.
-4. *Note: If the secret is not configured, the action gracefully leaves an informational reminder on the PR without failing the build pipeline.*
+4. *(Optional)* Override the default model by adding a repository variable or environment variable named `GEMINI_MODEL`.
+5. *Note: If the secret is not configured, the action gracefully leaves an informational reminder on the PR without failing the build pipeline.*
+
 
 
 

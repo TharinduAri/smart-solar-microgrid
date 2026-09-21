@@ -45,7 +45,7 @@ jobs:
       - name: Generate PR summary with Google Gemini
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-1.5-flash
+          GEMINI_MODEL: gemini-3.8-flash
         run: |
           python3 .github/scripts/generate_pr_summary.py diff.txt pr_summary.md
 
