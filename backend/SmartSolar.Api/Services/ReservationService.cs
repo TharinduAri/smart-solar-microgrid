@@ -6,6 +6,7 @@
  *               the 7 day booking window and the 12 hour notice period, keeps the
  *               slot availability counters correct, issues the transaction QR
  *               token and verifies it when a Grid Operator finalises a transfer.
+ *               Prosumers may only read and change their own reservations.
  * -----------------------------------------------------------------------------
  */
 
@@ -20,10 +21,10 @@ namespace SmartSolar.Api.Services;
 public interface IReservationService
 {
     Task<List<ReservationResponse>> SearchAsync(string? nic, string? status, string? stationId, bool? upcoming);
-    Task<ReservationResponse> GetByIdAsync(string id);
-    Task<ReservationResponse> CreateAsync(CreateReservationRequest request);
-    Task<ReservationResponse> UpdateAsync(string id, UpdateReservationRequest request);
-    Task<ReservationResponse> CancelAsync(string id);
+    Task<ReservationResponse> GetByIdAsync(string id, string? ownerNic);
+    Task<ReservationResponse> CreateAsync(CreateReservationRequest request, string? ownerNic);
+    Task<ReservationResponse> UpdateAsync(string id, UpdateReservationRequest request, string? ownerNic);
+    Task<ReservationResponse> CancelAsync(string id, string? ownerNic);
     Task<ReservationResponse> ApproveAsync(string id);
     Task<ReservationResponse> CompleteByQrAsync(QrVerificationRequest request, string operatorUserId);
     Task<DashboardSummary> GetDashboardAsync(string? nic);
@@ -80,16 +81,22 @@ public class ReservationService : IReservationService
     }
 
     // Loads one reservation with its prosumer and node names resolved.
-    public async Task<ReservationResponse> GetByIdAsync(string id)
+    public async Task<ReservationResponse> GetByIdAsync(string id, string? ownerNic)
     {
         var reservation = await FindOrThrowAsync(id);
+        EnsureOwner(reservation, ownerNic);
         return (await ToResponsesAsync(new List<EnergyReservation> { reservation })).Single();
     }
 
     // Creates a booking after checking the 7 day window and slot availability.
-    public async Task<ReservationResponse> CreateAsync(CreateReservationRequest request)
+    public async Task<ReservationResponse> CreateAsync(CreateReservationRequest request, string? ownerNic)
     {
         var nic = request.ProsumerNic.Trim().ToUpperInvariant();
+
+        if (ownerNic is not null && nic != ownerNic)
+        {
+            throw new ApiException("You can only make reservations for your own account.", StatusCodes.Status403Forbidden);
+        }
 
         var prosumer = await _context.Users.Find(u => u.Id == nic && u.Role == UserRoles.Prosumer).FirstOrDefaultAsync();
         if (prosumer is null || !prosumer.IsActive)
@@ -123,9 +130,10 @@ public class ReservationService : IReservationService
     }
 
     // Moves a booking to another slot, subject to the 12 hour notice rule.
-    public async Task<ReservationResponse> UpdateAsync(string id, UpdateReservationRequest request)
+    public async Task<ReservationResponse> UpdateAsync(string id, UpdateReservationRequest request, string? ownerNic)
     {
         var reservation = await FindOrThrowAsync(id);
+        EnsureOwner(reservation, ownerNic);
         EnsureChangeIsAllowed(reservation);
 
         if (reservation.SlotId != request.SlotId)
@@ -148,9 +156,10 @@ public class ReservationService : IReservationService
     }
 
     // Cancels a booking, releasing the battery bay back to the slot.
-    public async Task<ReservationResponse> CancelAsync(string id)
+    public async Task<ReservationResponse> CancelAsync(string id, string? ownerNic)
     {
         var reservation = await FindOrThrowAsync(id);
+        EnsureOwner(reservation, ownerNic);
         EnsureChangeIsAllowed(reservation);
 
         reservation.Status = ReservationStatus.Cancelled;
@@ -246,6 +255,15 @@ public class ReservationService : IReservationService
         if (slot.StartTime > DateTime.UtcNow.AddDays(MaxBookingWindowDays))
         {
             throw new ApiException($"Reservations can only be made within {MaxBookingWindowDays} days from today.");
+        }
+    }
+
+    // Stops a prosumer from reading or changing another prosumer's booking (staff pass null).
+    private static void EnsureOwner(EnergyReservation reservation, string? ownerNic)
+    {
+        if (ownerNic is not null && reservation.ProsumerNic != ownerNic)
+        {
+            throw new ApiException("You can only access your own reservations.", StatusCodes.Status403Forbidden);
         }
     }
 

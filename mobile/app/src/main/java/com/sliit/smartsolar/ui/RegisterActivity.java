@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.network.ApiClient;
+import com.sliit.smartsolar.util.SystemBars;
 
 import org.json.JSONObject;
 
@@ -32,6 +33,7 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
+        SystemBars.apply(this);
 
         nicInput = findViewById(R.id.inputNic);
         nameInput = findViewById(R.id.inputFullName);

@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- The camera is only needed by the operator QR scanner, so phones without one can still install the app. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -39,6 +43,10 @@
         <activity android:name=".ui.OperatorHomeActivity" android:exported="false" />
         <activity android:name=".ui.ReservationsActivity" android:exported="false" />
         <activity android:name=".ui.StationMapActivity" android:exported="false" />
+        <activity android:name=".ui.BookingFormActivity" android:exported="false" />
+        <activity android:name=".ui.BookingDetailActivity" android:exported="false" />
+        <activity android:name=".ui.SummaryActivity" android:exported="false" />
+        <activity android:name=".ui.ProfileActivity" android:exported="false" />
 
     </application>
 </manifest>

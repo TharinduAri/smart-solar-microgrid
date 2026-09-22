@@ -130,12 +130,16 @@ Working end to end:
   - Web User Management: create Backoffice and Grid Operator users.
 - **Mobile Application**:
   - Login, registration by NIC (stored as primary key).
-  - Prosumer dashboard counts, booking list with filter.
+  - Prosumer profile edit and account deactivation request.
+  - Booking create, change and cancel, with a summary page after each action.
+  - Booking details with the transaction QR code once approved.
+  - Booking list filtered by status and upcoming/history; operators can also search by NIC.
+  - Prosumer and operator dashboards with pending and approved upcoming counts.
   - Google Maps node markers plotted from stored coordinates.
-  - Operator QR scan with server-side verification.
+  - Operator QR scan: the booking is fetched from the server and shown, then verified and completed.
+  - SQLite keeps the login (with its expiry) and a cached copy of the microgrid nodes.
 
 Remaining tasks:
-- Mobile: booking create/update/cancel screens, summary page after each action, QR display screen using `util/QrCodeGenerator`.
 - Report deliverables: UI screenshots, high-level/use-case/DFD diagrams, references.
 
 ---

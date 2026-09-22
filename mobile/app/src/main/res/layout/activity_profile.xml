@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Prosumer profile edit. The NIC is the primary key and cannot be changed. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="@string/my_profile"
+            android:textColor="@color/grid_navy"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/inputNic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints=""
+            android:enabled="false"
+            android:hint="@string/hint_nic"
+            android:inputType="text" />
+
+        <EditText
+            android:id="@+id/inputFullName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="name"
+            android:hint="@string/hint_full_name"
+            android:inputType="textPersonName" />
+
+        <EditText
+            android:id="@+id/inputEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="emailAddress"
+            android:hint="@string/hint_email"
+            android:inputType="textEmailAddress" />
+
+        <EditText
+            android:id="@+id/inputPhone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="phone"
+            android:hint="@string/hint_phone"
+            android:inputType="phone" />
+
+        <EditText
+            android:id="@+id/inputAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:autofillHints="postalAddress"
+            android:hint="@string/hint_address"
+            android:inputType="textPostalAddress" />
+
+        <Button
+            android:id="@+id/buttonSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:backgroundTint="@color/solar_amber"
+            android:text="@string/save_profile"
+            android:textColor="@color/grid_navy" />
+
+        <Button
+            android:id="@+id/buttonRequestDeactivation"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:textColor="@color/grid_navy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="@string/request_deactivation" />
+    </LinearLayout>
+</ScrollView>

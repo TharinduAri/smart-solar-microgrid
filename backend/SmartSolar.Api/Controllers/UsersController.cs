@@ -8,6 +8,7 @@
  * -----------------------------------------------------------------------------
  */
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartSolar.Api.Dtos;
@@ -27,6 +28,10 @@ public class UsersController : ControllerBase
     {
         _userService = userService;
     }
+
+    // The caller's own account id; null for Backoffice, who can manage every account.
+    private string? OwnerId =>
+        User.IsInRole(UserRoles.Backoffice) ? null : User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
     // GET /api/users?role=&isActive= - listing for the web administration screens.
     [HttpGet]
@@ -48,7 +53,7 @@ public class UsersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<UserResponse>> GetById(string id)
     {
-        return Ok(await _userService.GetByIdAsync(id));
+        return Ok(await _userService.GetByIdAsync(id, OwnerId));
     }
 
     // POST /api/users - Backoffice creates a Backoffice or Grid Operator account.
@@ -63,14 +68,14 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponse>> Update(string id, UpdateUserRequest request)
     {
-        return Ok(await _userService.UpdateAsync(id, request));
+        return Ok(await _userService.UpdateAsync(id, request, OwnerId));
     }
 
     // PATCH /api/users/{id}/request-deactivation - raised by the prosumer on mobile.
     [HttpPatch("{id}/request-deactivation")]
     public async Task<ActionResult<UserResponse>> RequestDeactivation(string id)
     {
-        return Ok(await _userService.RequestDeactivationAsync(id));
+        return Ok(await _userService.RequestDeactivationAsync(id, OwnerId));
     }
 
     // PATCH /api/users/{id}/activate - reactivation is Backoffice only.
