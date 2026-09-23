@@ -29,6 +29,10 @@ public class ReservationsController : ControllerBase
         _reservationService = reservationService;
     }
 
+    // A prosumer's own NIC from the login token; null for staff, who can see every booking.
+    private string? OwnerNic =>
+        User.IsInRole(UserRoles.Prosumer) ? User.FindFirstValue("nic") ?? string.Empty : null;
+
     // GET /api/reservations?nic=&status=&stationId=&upcoming= - search and history.
     [HttpGet]
     public async Task<ActionResult<List<ReservationResponse>>> Search(
@@ -37,42 +41,42 @@ public class ReservationsController : ControllerBase
         [FromQuery] string? stationId,
         [FromQuery] bool? upcoming)
     {
-        return Ok(await _reservationService.SearchAsync(nic, status, stationId, upcoming));
+        return Ok(await _reservationService.SearchAsync(OwnerNic ?? nic, status, stationId, upcoming));
     }
 
     // GET /api/reservations/dashboard?nic= - counts for the web and mobile home screens.
     [HttpGet("dashboard")]
     public async Task<ActionResult<DashboardSummary>> Dashboard([FromQuery] string? nic)
     {
-        return Ok(await _reservationService.GetDashboardAsync(nic));
+        return Ok(await _reservationService.GetDashboardAsync(OwnerNic ?? nic));
     }
 
     // GET /api/reservations/{id} - single booking, also used by the summary page.
     [HttpGet("{id}")]
     public async Task<ActionResult<ReservationResponse>> GetById(string id)
     {
-        return Ok(await _reservationService.GetByIdAsync(id));
+        return Ok(await _reservationService.GetByIdAsync(id, OwnerNic));
     }
 
     // POST /api/reservations - creates a booking inside the 7 day window.
     [HttpPost]
     public async Task<ActionResult<ReservationResponse>> Create(CreateReservationRequest request)
     {
-        return Ok(await _reservationService.CreateAsync(request));
+        return Ok(await _reservationService.CreateAsync(request, OwnerNic));
     }
 
     // PUT /api/reservations/{id} - update needs at least 12 hours notice.
     [HttpPut("{id}")]
     public async Task<ActionResult<ReservationResponse>> Update(string id, UpdateReservationRequest request)
     {
-        return Ok(await _reservationService.UpdateAsync(id, request));
+        return Ok(await _reservationService.UpdateAsync(id, request, OwnerNic));
     }
 
     // PATCH /api/reservations/{id}/cancel - cancellation needs 12 hours notice.
     [HttpPatch("{id}/cancel")]
     public async Task<ActionResult<ReservationResponse>> Cancel(string id)
     {
-        return Ok(await _reservationService.CancelAsync(id));
+        return Ok(await _reservationService.CancelAsync(id, OwnerNic));
     }
 
     // PATCH /api/reservations/{id}/approve - confirms a booking and issues the QR token.

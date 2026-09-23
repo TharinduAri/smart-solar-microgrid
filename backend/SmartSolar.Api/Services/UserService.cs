@@ -21,9 +21,9 @@ public interface IUserService
     Task<UserResponse> CreateWebUserAsync(CreateWebUserRequest request);
     Task<List<UserResponse>> GetUsersAsync(string? role, bool? isActive);
     Task<List<UserResponse>> GetPendingActivationsAsync();
-    Task<UserResponse> GetByIdAsync(string id);
-    Task<UserResponse> UpdateAsync(string id, UpdateUserRequest request);
-    Task<UserResponse> RequestDeactivationAsync(string id);
+    Task<UserResponse> GetByIdAsync(string id, string? ownerId);
+    Task<UserResponse> UpdateAsync(string id, UpdateUserRequest request, string? ownerId);
+    Task<UserResponse> RequestDeactivationAsync(string id, string? ownerId);
     Task<UserResponse> SetActiveAsync(string id, bool isActive);
 }
 
@@ -94,14 +94,16 @@ public class UserService : IUserService
     }
 
     // Loads a single account by its id (NIC for prosumers).
-    public async Task<UserResponse> GetByIdAsync(string id)
+    public async Task<UserResponse> GetByIdAsync(string id, string? ownerId)
     {
+        EnsureOwner(id, ownerId);
         return ToResponse(await FindOrThrowAsync(id));
     }
 
     // Updates editable profile fields; role and activation state are untouched.
-    public async Task<UserResponse> UpdateAsync(string id, UpdateUserRequest request)
+    public async Task<UserResponse> UpdateAsync(string id, UpdateUserRequest request, string? ownerId)
     {
+        EnsureOwner(id, ownerId);
         var user = await FindOrThrowAsync(id);
 
         user.FullName = request.FullName.Trim();
@@ -115,8 +117,9 @@ public class UserService : IUserService
     }
 
     // A prosumer asks from the mobile app for the account to be deactivated.
-    public async Task<UserResponse> RequestDeactivationAsync(string id)
+    public async Task<UserResponse> RequestDeactivationAsync(string id, string? ownerId)
     {
+        EnsureOwner(id, ownerId);
         var user = await FindOrThrowAsync(id);
 
         if (user.Role != UserRoles.Prosumer)
@@ -142,6 +145,15 @@ public class UserService : IUserService
 
         await _context.Users.ReplaceOneAsync(u => u.Id == id, user);
         return ToResponse(user);
+    }
+
+    // Stops a user from reading or editing someone else's account (Backoffice passes null).
+    private static void EnsureOwner(string id, string? ownerId)
+    {
+        if (ownerId is not null && id != ownerId)
+        {
+            throw new ApiException("You can only access your own account.", StatusCodes.Status403Forbidden);
+        }
     }
 
     // Shared lookup that raises a 404 when the account does not exist.

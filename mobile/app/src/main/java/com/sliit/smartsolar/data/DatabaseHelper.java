@@ -20,7 +20,7 @@ import org.json.JSONObject;
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "smart_solar.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
 
     public static final String TABLE_SESSION = "user_session";
     public static final String TABLE_STATIONS = "cached_stations";
@@ -38,7 +38,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + "nic TEXT, "
                 + "full_name TEXT, "
                 + "role TEXT, "
-                + "token TEXT)");
+                + "token TEXT, "
+                + "expires_at TEXT)");
 
         db.execSQL("CREATE TABLE " + TABLE_STATIONS + " ("
                 + "id TEXT PRIMARY KEY, "

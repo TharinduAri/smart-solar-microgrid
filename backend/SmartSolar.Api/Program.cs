@@ -97,10 +97,12 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseCors("SmartSolarClients");
-
 // HttpURLConnection on Android cannot issue PATCH, so honour X-Http-Method-Override.
+// Routing must run after the override, otherwise the request is matched as a POST.
 app.UseHttpMethodOverride();
+app.UseRouting();
+
+app.UseCors("SmartSolarClients");
 
 app.UseAuthentication();
 app.UseAuthorization();

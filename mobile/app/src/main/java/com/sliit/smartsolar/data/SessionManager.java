@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.sliit.smartsolar.network.ApiClient;
+import com.sliit.smartsolar.util.Format;
 
 import org.json.JSONObject;
 
@@ -14,6 +15,7 @@ import org.json.JSONObject;
  *
  * Keeps the signed in user in the local SQLite database so the session survives
  * an app restart, and pushes the stored token back into ApiClient on startup.
+ * An expired login is thrown away so the user is sent back to the login screen.
  */
 public class SessionManager {
 
@@ -34,12 +36,13 @@ public class SessionManager {
         values.put("full_name", loginResponse.optString("fullName"));
         values.put("role", loginResponse.optString("role"));
         values.put("token", loginResponse.optString("token"));
+        values.put("expires_at", loginResponse.optString("expiresAt"));
         db.insert(DatabaseHelper.TABLE_SESSION, null, values);
 
         ApiClient.setAuthToken(loginResponse.optString("token"));
     }
 
-    /** Reads the stored session, or returns null when nobody is signed in. */
+    /** Reads the stored session, or returns null when nobody is signed in or the login has expired. */
     public JSONObject load() {
         try (Cursor cursor = helper.getReadableDatabase()
                 .query(DatabaseHelper.TABLE_SESSION, null, null, null, null, null, null, "1")) {
@@ -52,11 +55,25 @@ public class SessionManager {
             session.put("fullName", cursor.getString(cursor.getColumnIndexOrThrow("full_name")));
             session.put("role", cursor.getString(cursor.getColumnIndexOrThrow("role")));
             session.put("token", cursor.getString(cursor.getColumnIndexOrThrow("token")));
+
+            String expiresAt = cursor.getString(cursor.getColumnIndexOrThrow("expires_at"));
+            if (expiresAt == null || Format.isPast(expiresAt)) {
+                clear();
+                return null;
+            }
+
             ApiClient.setAuthToken(session.optString("token"));
             return session;
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    /** Keeps the name shown on the home screen in step after a profile edit. */
+    public void updateFullName(String fullName) {
+        ContentValues values = new ContentValues();
+        values.put("full_name", fullName);
+        helper.getWritableDatabase().update(DatabaseHelper.TABLE_SESSION, values, null, null);
     }
 
     /** Clears the stored session when the user signs out. */
