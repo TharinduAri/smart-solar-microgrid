@@ -95,7 +95,16 @@ npm run dev              # http://localhost:5173
 
 ### 3. Android application (`mobile/`)
 
-Open the `mobile/` folder in Android Studio (compileSdk 35, minSdk 26, Java 17).
+Quickest way, from PowerShell in the repository root:
+
+```powershell
+.\mobile\run-mobile.ps1
+```
+
+The script checks Java, the Android SDK, Gradle and a connected device, installs
+anything missing, starts the Web API, then builds, installs and opens the app.
+
+To do it by hand instead, open the `mobile/` folder in Android Studio (compileSdk 35, minSdk 26, Java 17).
 
 1. Copy `local.properties.example` to `local.properties` and add your `sdk.dir` and
    `MAPS_API_KEY` (Google Maps Android API key).
