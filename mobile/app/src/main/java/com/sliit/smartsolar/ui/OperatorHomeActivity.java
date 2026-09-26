@@ -6,9 +6,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 import com.sliit.smartsolar.R;
@@ -140,10 +140,10 @@ public class OperatorHomeActivity extends AppCompatActivity {
                 r.optString("prosumerNic"),
                 r.optString("stationName"),
                 Format.dateTime(r.optString("reservationTime")),
-                r.optDouble("energyKwh"),
+                Format.energy(r.optDouble("energyKwh")),
                 r.optString("status"));
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.check_booking)
                 .setMessage(details)
                 .setPositiveButton(R.string.complete_transfer, (dialog, which) -> completeTransfer(r.optString("id"), qrToken))

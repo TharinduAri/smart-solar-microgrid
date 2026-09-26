@@ -2,16 +2,14 @@ package com.sliit.smartsolar.ui;
 
 import android.os.Bundle;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.SessionManager;
 import com.sliit.smartsolar.network.ApiClient;
@@ -22,7 +20,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -45,12 +42,14 @@ public class BookingFormActivity extends AppCompatActivity {
     private final List<String> stationIds = new ArrayList<>();
     private final List<String> slotIds = new ArrayList<>();
 
-    private Spinner stationSpinner;
-    private Spinner slotSpinner;
+    private MaterialAutoCompleteTextView stationInput;
+    private MaterialAutoCompleteTextView slotInput;
     private EditText energyInput;
     private Button saveButton;
     private String reservationId;
     private JSONObject session;
+    private int stationIndex = -1;
+    private int slotIndex = -1;
 
     /** Sets the form up for a new booking or for changing an existing one. */
     @Override
@@ -65,19 +64,25 @@ public class BookingFormActivity extends AppCompatActivity {
             return;
         }
 
-        stationSpinner = findViewById(R.id.spinnerStation);
-        slotSpinner = findViewById(R.id.spinnerSlot);
+        MaterialToolbar toolbar = findViewById(R.id.appBar);
+        toolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
+
+        stationInput = findViewById(R.id.inputStation);
+        slotInput = findViewById(R.id.inputSlot);
         energyInput = findViewById(R.id.inputEnergy);
         saveButton = findViewById(R.id.buttonSave);
         reservationId = getIntent().getStringExtra(EXTRA_RESERVATION_ID);
 
+        slotInput.setOnItemClickListener((parent, view, position, id) -> slotIndex = position);
+
         if (reservationId != null) {
             // Changing a booking: the node stays the same, only the slot and energy can change.
-            ((TextView) findViewById(R.id.textTitle)).setText(R.string.change_booking);
+            toolbar.setTitle(R.string.change_booking);
             String stationId = getIntent().getStringExtra(EXTRA_STATION_ID);
             stationIds.add(stationId);
-            setItems(stationSpinner, Collections.singletonList(getIntent().getStringExtra(EXTRA_STATION_NAME)));
-            stationSpinner.setEnabled(false);
+            stationIndex = 0;
+            stationInput.setText(getIntent().getStringExtra(EXTRA_STATION_NAME), false);
+            findViewById(R.id.layoutStation).setEnabled(false);
             energyInput.setText(String.valueOf(getIntent().getDoubleExtra(EXTRA_ENERGY, 0)));
             loadSlots(stationId);
         } else {
@@ -87,7 +92,7 @@ public class BookingFormActivity extends AppCompatActivity {
         saveButton.setOnClickListener(v -> save());
     }
 
-    /** Loads the active nodes and reloads the slots whenever a different node is picked. */
+    /** Loads the active nodes, picks the first one and reloads the slots whenever another is picked. */
     private void loadStations() {
         ApiClient.get("/api/stations?isActive=true", new ApiClient.Callback() {
             @Override
@@ -100,17 +105,11 @@ public class BookingFormActivity extends AppCompatActivity {
                         stationIds.add(s.optString("id"));
                         names.add(s.optString("name") + " (" + s.optString("location") + ")");
                     }
-                    setItems(stationSpinner, names);
-                    stationSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            loadSlots(stationIds.get(position));
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {
-                        }
-                    });
+                    stationInput.setSimpleItems(names.toArray(new String[0]));
+                    stationInput.setOnItemClickListener((parent, view, position, id) -> selectStation(position, names));
+                    if (!names.isEmpty()) {
+                        selectStation(0, names);
+                    }
                 } catch (Exception ex) {
                     onError(ex.getMessage());
                 }
@@ -121,6 +120,13 @@ public class BookingFormActivity extends AppCompatActivity {
                 Toast.makeText(BookingFormActivity.this, message, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    /** Shows the chosen node and loads its free slots. */
+    private void selectStation(int position, List<String> names) {
+        stationIndex = position;
+        stationInput.setText(names.get(position), false);
+        loadSlots(stationIds.get(position));
     }
 
     /** Loads the free time slots of a node. When changing a booking, its current slot is listed first. */
@@ -151,7 +157,10 @@ public class BookingFormActivity extends AppCompatActivity {
                                 slot.optInt("availableSlots")));
                     }
 
-                    setItems(slotSpinner, labels);
+                    // Pick the first slot, as the old dropdown did, so the form is ready to save.
+                    slotInput.setSimpleItems(labels.toArray(new String[0]));
+                    slotIndex = labels.isEmpty() ? -1 : 0;
+                    slotInput.setText(labels.isEmpty() ? "" : labels.get(0), false);
                     findViewById(R.id.textNoSlots).setVisibility(labels.isEmpty() ? View.VISIBLE : View.GONE);
                 } catch (Exception ex) {
                     onError(ex.getMessage());
@@ -167,17 +176,16 @@ public class BookingFormActivity extends AppCompatActivity {
 
     /** Sends the booking to the API and opens the summary page when it is accepted. */
     private void save() {
-        int slotPosition = slotSpinner.getSelectedItemPosition();
         String energy = energyInput.getText().toString().trim();
 
-        if (slotPosition < 0 || slotPosition >= slotIds.size() || energy.isEmpty()) {
+        if (slotIndex < 0 || slotIndex >= slotIds.size() || energy.isEmpty()) {
             Toast.makeText(this, R.string.error_fill_all_fields, Toast.LENGTH_SHORT).show();
             return;
         }
 
         try {
             JSONObject body = new JSONObject();
-            body.put("slotId", slotIds.get(slotPosition));
+            body.put("slotId", slotIds.get(slotIndex));
             body.put("energyKwh", Double.parseDouble(energy));
 
             ApiClient.Callback callback = new ApiClient.Callback() {
@@ -198,7 +206,7 @@ public class BookingFormActivity extends AppCompatActivity {
             saveButton.setEnabled(false);
             if (reservationId == null) {
                 body.put("prosumerNic", session.optString("nic"));
-                body.put("stationId", stationIds.get(stationSpinner.getSelectedItemPosition()));
+                body.put("stationId", stationIds.get(stationIndex));
                 ApiClient.post("/api/reservations", body, callback);
             } else {
                 ApiClient.put("/api/reservations/" + reservationId, body, callback);
@@ -207,12 +215,5 @@ public class BookingFormActivity extends AppCompatActivity {
             saveButton.setEnabled(true);
             Toast.makeText(this, R.string.error_fill_all_fields, Toast.LENGTH_SHORT).show();
         }
-    }
-
-    /** Puts a list of labels into a dropdown. */
-    private void setItems(Spinner spinner, List<String> items) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, items);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
     }
 }

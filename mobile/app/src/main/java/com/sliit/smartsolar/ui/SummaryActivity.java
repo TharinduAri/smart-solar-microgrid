@@ -12,6 +12,7 @@ import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.SessionManager;
 import com.sliit.smartsolar.util.Format;
 import com.sliit.smartsolar.util.SystemBars;
+import com.sliit.smartsolar.util.Tones;
 
 import org.json.JSONObject;
 
@@ -46,16 +47,18 @@ public class SummaryActivity extends AppCompatActivity {
 
         try {
             JSONObject r = new JSONObject(getIntent().getStringExtra(EXTRA_RESERVATION));
-            ((TextView) findViewById(R.id.textMessage)).setText(messageFor(r.optString("status")));
-            ((TextView) findViewById(R.id.textDetails)).setText(getString(R.string.summary_details,
-                    r.optString("id"),
-                    r.optString("prosumerName"),
-                    r.optString("stationName"),
-                    Format.dateTime(r.optString("reservationTime")),
-                    r.optDouble("energyKwh"),
-                    r.optString("status")));
+            String status = r.optString("status");
+            ((TextView) findViewById(R.id.textMessage)).setText(messageFor(status));
+            Tones.statusIcon(findViewById(R.id.imageResult), status);
+            Tones.statusLabel(findViewById(R.id.textStatus), status);
+            ((TextView) findViewById(R.id.textNode)).setText(r.optString("stationName"));
+            ((TextView) findViewById(R.id.textProsumer)).setText(
+                    getString(R.string.prosumer_value, r.optString("prosumerName"), r.optString("prosumerNic")));
+            ((TextView) findViewById(R.id.textTime)).setText(Format.dateTime(r.optString("reservationTime")));
+            ((TextView) findViewById(R.id.textEnergy)).setText(Format.energy(r.optDouble("energyKwh")));
+            ((TextView) findViewById(R.id.textReference)).setText(r.optString("id"));
         } catch (Exception ex) {
-            ((TextView) findViewById(R.id.textDetails)).setText(ex.getMessage());
+            ((TextView) findViewById(R.id.textMessage)).setText(ex.getMessage());
         }
 
         findViewById(R.id.buttonHome).setOnClickListener(v -> goHome());

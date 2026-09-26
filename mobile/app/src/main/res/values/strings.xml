@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Smart Solar</string>
-    <string name="tagline">Microgrid Trading</string>
+    <string name="back">Back</string>
 
     <string name="sign_in">Sign in</string>
     <string name="sign_out">Sign out</string>
     <string name="register">Create prosumer account</string>
     <string name="no_account">New prosumer? Create an account</string>
+    <string name="login_title">Smart Solar Microgrid</string>
+    <string name="login_subtitle">Prosumer &amp; Grid Operator app</string>
+    <string name="register_intro">Register with your National Identity Card (NIC) number. A Backoffice officer activates new accounts.</string>
 
     <string name="hint_username">Email or NIC</string>
     <string name="hint_password">Password</string>
@@ -20,20 +23,32 @@
 
     <!-- Home screens -->
     <string name="welcome_user">Welcome, %1$s</string>
+    <string name="overview">Overview</string>
+    <string name="quick_actions">Quick actions</string>
     <string name="zero">0</string>
     <string name="pending_reservations">Pending reservations</string>
     <string name="approved_reservations">Approved upcoming</string>
     <string name="new_booking">New booking</string>
     <string name="my_bookings">My bookings</string>
+    <string name="my_bookings_hint">Pending, approved and past bookings</string>
     <string name="nearby_nodes">Nearby microgrid nodes</string>
+    <string name="nearby_nodes_hint">Solar hubs near you on the map</string>
     <string name="my_profile">My profile</string>
+    <string name="my_profile_hint">Name, email, phone and address</string>
     <string name="scan_qr">Scan transaction QR</string>
+    <string name="scan_hint">Scan the QR code a prosumer shows at the node to complete the energy transfer.</string>
     <string name="all_bookings">Power trading bookings</string>
+    <string name="all_bookings_hint">Every booking, to approve, change or cancel</string>
     <string name="node_map">Microgrid node map</string>
+    <string name="node_map_hint">Active solar hubs on the map</string>
 
     <!-- Booking list -->
     <string name="search">Search</string>
+    <string name="label_status_filter">Status</string>
+    <string name="label_time_filter">Date</string>
     <string name="no_bookings">No bookings match this search.</string>
+    <string name="time_and_energy">%1$s · %2$s</string>
+    <string name="prosumer_and_nic">%1$s · %2$s</string>
     <string-array name="status_filter">
         <item>All statuses</item>
         <item>Pending</item>
@@ -59,7 +74,14 @@
     <string name="save_booking">Save booking</string>
 
     <!-- Booking details -->
-    <string name="booking_details">Prosumer: %1$s (%2$s)\nTime: %3$s\nEnergy: %4$.1f kWh\nReference: %5$s</string>
+    <string name="booking_details_title">Booking details</string>
+    <string name="label_prosumer">Prosumer</string>
+    <string name="label_node_short">Node</string>
+    <string name="label_time">Time</string>
+    <string name="label_energy_short">Energy</string>
+    <string name="label_reference">Reference</string>
+    <string name="label_status">Status</string>
+    <string name="prosumer_value">%1$s (%2$s)</string>
     <string name="qr_description">Transaction QR code</string>
     <string name="qr_hint">Show this code to the grid operator at the node.</string>
     <string name="approve_booking">Approve booking</string>
@@ -71,11 +93,11 @@
     <string name="notice_12_hours">Changes and cancellations need at least 12 hours\' notice.</string>
 
     <!-- Summary page -->
+    <string name="summary_title">Booking summary</string>
     <string name="summary_created">Booking created</string>
     <string name="summary_updated">Booking updated</string>
     <string name="summary_cancelled">Booking cancelled</string>
     <string name="transfer_completed">Energy transfer completed</string>
-    <string name="summary_details">Reference: %1$s\nProsumer: %2$s\nNode: %3$s\nTime: %4$s\nEnergy: %5$.1f kWh\nStatus: %6$s</string>
     <string name="next_pending">Your booking is waiting for a grid operator to approve it.</string>
     <string name="next_approved">Your booking is approved. Show its QR code at the node.</string>
     <string name="next_cancelled">The battery slot has been released.</string>
@@ -94,7 +116,7 @@
     <!-- Operator QR scan -->
     <string name="scan_prompt">Point the camera at the prosumer QR code</string>
     <string name="check_booking">Check booking</string>
-    <string name="scan_details">Prosumer: %1$s (%2$s)\nNode: %3$s\nTime: %4$s\nEnergy: %5$.1f kWh\nStatus: %6$s</string>
+    <string name="scan_details">Prosumer: %1$s (%2$s)\nNode: %3$s\nTime: %4$s\nEnergy: %5$s\nStatus: %6$s</string>
     <string name="complete_transfer">Complete transfer</string>
     <string name="close">Close</string>
     <string name="invalid_qr">That QR code is not a valid transaction code.</string>

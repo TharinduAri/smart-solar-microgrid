@@ -1,8 +1,31 @@
 // Web user management - Backoffice creates Backoffice and Grid Operator accounts.
 import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { api } from '../api/client.js';
+import EmptyRow from '../components/EmptyRow.jsx';
+import PageHeader from '../components/PageHeader.jsx';
+import StatusChip from '../components/StatusChip.jsx';
 
 const emptyForm = { fullName: '', email: '', phoneNumber: '', role: 'GridOperator', password: '' };
+
+const ROLE_LABELS = { Backoffice: 'Backoffice', GridOperator: 'Grid Operator' };
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -42,105 +65,104 @@ export default function UsersPage() {
 
   return (
     <>
-      <h1 className="h4 mb-4">Web Users</h1>
+      <PageHeader title="Web Users" subtitle="Backoffice officers and Grid Operators who use this portal" />
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <h2 className="h6 text-muted mb-3">Create a Backoffice or Grid Operator account</h2>
-          <form className="row g-2" onSubmit={handleCreate}>
-            <div className="col-12 col-lg-3">
-              <input
-                className="form-control"
-                placeholder="Full name"
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="subtitle1" component="h2" sx={{ mb: 2 }}>
+            Create a Backoffice or Grid Operator account
+          </Typography>
+          <Box component="form" onSubmit={handleCreate}>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: '3fr 3fr 2fr 2fr 2fr' },
+              }}
+            >
+              <TextField
+                label="Full name"
+                size="small"
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                 required
               />
-            </div>
-            <div className="col-12 col-lg-3">
-              <input
-                className="form-control"
+              <TextField
+                label="Email"
                 type="email"
-                placeholder="Email"
+                size="small"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
               />
-            </div>
-            <div className="col-6 col-lg-2">
-              <input
-                className="form-control"
-                placeholder="Phone"
+              <TextField
+                label="Phone"
+                size="small"
                 value={form.phoneNumber}
                 onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
               />
-            </div>
-            <div className="col-6 col-lg-2">
-              <select
-                className="form-select"
+              <TextField
+                select
+                label="Role"
+                size="small"
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
               >
-                <option value="GridOperator">Grid Operator</option>
-                <option value="Backoffice">Backoffice</option>
-              </select>
-            </div>
-            <div className="col-12 col-lg-2">
-              <input
-                className="form-control"
+                <MenuItem value="GridOperator">Grid Operator</MenuItem>
+                <MenuItem value="Backoffice">Backoffice</MenuItem>
+              </TextField>
+              <TextField
+                label="Password"
                 type="password"
-                placeholder="Password"
+                size="small"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
+                autoComplete="new-password"
                 required
               />
-            </div>
-            <div className="col-12">
-              <button className="btn btn-warning btn-sm fw-semibold">Create user</button>
-            </div>
-          </form>
-        </div>
-      </div>
+            </Box>
+            <Button type="submit" variant="contained" startIcon={<PersonAddIcon />} sx={{ mt: 2 }}>
+              Create user
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
 
-      <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Role</TableCell>
+                <TableCell>Status</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {users.map((u) => (
-                <tr key={u.id}>
-                  <td className="fw-semibold">{u.fullName}</td>
-                  <td>{u.email}</td>
-                  <td>
-                    <span className="badge text-bg-light border">{u.role}</span>
-                  </td>
-                  <td>
-                    <span className={`badge ${u.isActive ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                      {u.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                </tr>
+                <TableRow key={u.id} hover>
+                  <TableCell sx={{ fontWeight: 500 }}>{u.fullName}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>
+                    <Chip size="small" variant="outlined" label={ROLE_LABELS[u.role] ?? u.role} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusChip label={u.isActive ? 'Active' : 'Inactive'} tone={u.isActive ? 'success' : 'neutral'} />
+                  </TableCell>
+                </TableRow>
               ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="text-center text-muted py-4">
-                    No web users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              {users.length === 0 && <EmptyRow colSpan={4} text="No web users found." />}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
     </>
   );
 }

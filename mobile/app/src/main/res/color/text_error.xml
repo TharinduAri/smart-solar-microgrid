@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Red text for destructive buttons, faded when the button is disabled. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:alpha="0.38" android:color="@color/error" android:state_enabled="false" />
+    <item android:color="@color/error" />
+</selector>

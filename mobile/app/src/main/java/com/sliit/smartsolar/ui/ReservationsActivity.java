@@ -3,29 +3,28 @@ package com.sliit.smartsolar.ui;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ArrayAdapter;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
-import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import com.google.android.material.textfield.TextInputLayout;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.SessionManager;
 import com.sliit.smartsolar.network.ApiClient;
-import com.sliit.smartsolar.util.Format;
 import com.sliit.smartsolar.util.SystemBars;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.IntConsumer;
 
 /**
  * Smart Solar Microgrid Trading System - Android Client.
@@ -43,13 +42,11 @@ public class ReservationsActivity extends AppCompatActivity {
     private static final String[] STATUS_VALUES = {"", "Pending", "Approved", "Completed", "Cancelled"};
     private static final String[] TIME_VALUES = {"", "true", "false"};
 
-    private final List<String> reservationIds = new ArrayList<>();
-
-    private Spinner statusSpinner;
-    private Spinner timeSpinner;
     private EditText nicInput;
-    private ListView listView;
+    private ReservationAdapter adapter;
     private boolean isOperator;
+    private int statusIndex;
+    private int timeIndex;
 
     /** Sets up the filters, applying any filter passed in from the home screen. */
     @Override
@@ -65,24 +62,38 @@ public class ReservationsActivity extends AppCompatActivity {
         }
         isOperator = !"Prosumer".equals(session.optString("role"));
 
-        statusSpinner = findViewById(R.id.spinnerStatus);
-        timeSpinner = findViewById(R.id.spinnerTime);
+        MaterialToolbar toolbar = findViewById(R.id.appBar);
+        toolbar.setTitle(isOperator ? R.string.all_bookings : R.string.my_bookings);
+        toolbar.setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
+
+        statusIndex = indexOf(STATUS_VALUES, getIntent().getStringExtra(EXTRA_STATUS));
+        timeIndex = indexOf(TIME_VALUES, getIntent().getStringExtra(EXTRA_UPCOMING));
+        setUpDropdown(findViewById(R.id.inputStatus), R.array.status_filter, statusIndex,
+                position -> statusIndex = position);
+        setUpDropdown(findViewById(R.id.inputTime), R.array.time_filter, timeIndex,
+                position -> timeIndex = position);
+
+        // Grid Operators can also search by NIC, from the keyboard or the search icon.
+        TextInputLayout nicLayout = findViewById(R.id.layoutNic);
         nicInput = findViewById(R.id.inputNic);
-        listView = findViewById(R.id.listReservations);
+        nicLayout.setVisibility(isOperator ? View.VISIBLE : View.GONE);
+        nicLayout.setEndIconOnClickListener(v -> loadReservations());
+        nicInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                loadReservations();
+                return true;
+            }
+            return false;
+        });
 
-        setItems(statusSpinner, R.array.status_filter);
-        setItems(timeSpinner, R.array.time_filter);
-        statusSpinner.setSelection(indexOf(STATUS_VALUES, getIntent().getStringExtra(EXTRA_STATUS)));
-        timeSpinner.setSelection(indexOf(TIME_VALUES, getIntent().getStringExtra(EXTRA_UPCOMING)));
-        nicInput.setVisibility(isOperator ? View.VISIBLE : View.GONE);
-        ((TextView) findViewById(R.id.textTitle)).setText(isOperator ? R.string.all_bookings : R.string.my_bookings);
-
-        findViewById(R.id.buttonSearch).setOnClickListener(v -> loadReservations());
-        listView.setOnItemClickListener((parent, view, position, id) -> {
+        RecyclerView list = findViewById(R.id.listReservations);
+        list.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new ReservationAdapter(isOperator, reservation -> {
             Intent intent = new Intent(this, BookingDetailActivity.class);
-            intent.putExtra(BookingDetailActivity.EXTRA_ID, reservationIds.get(position));
+            intent.putExtra(BookingDetailActivity.EXTRA_ID, reservation.optString("id"));
             startActivity(intent);
         });
+        list.setAdapter(adapter);
     }
 
     /** Reloads the list whenever the screen is shown, so changes made elsewhere appear. */
@@ -96,9 +107,9 @@ public class ReservationsActivity extends AppCompatActivity {
     private void loadReservations() {
         StringBuilder path = new StringBuilder("/api/reservations?");
 
-        String status = STATUS_VALUES[statusSpinner.getSelectedItemPosition()];
-        String upcoming = TIME_VALUES[timeSpinner.getSelectedItemPosition()];
-        String nic = nicInput.getText().toString().trim();
+        String status = STATUS_VALUES[statusIndex];
+        String upcoming = TIME_VALUES[timeIndex];
+        String nic = nicInput.getText() == null ? "" : nicInput.getText().toString().trim();
 
         if (!status.isEmpty()) {
             path.append("status=").append(status).append("&");
@@ -123,41 +134,29 @@ public class ReservationsActivity extends AppCompatActivity {
         });
     }
 
-    /** Shows each booking as two lines: node and status, then time and energy. */
+    /** Shows the bookings as cards, or the empty message when nothing matches. */
     private void render(String body) {
-        List<Map<String, String>> rows = new ArrayList<>();
-        reservationIds.clear();
-
+        List<JSONObject> rows = new ArrayList<>();
         try {
             JSONArray reservations = new JSONArray(body);
             for (int i = 0; i < reservations.length(); i++) {
-                JSONObject r = reservations.getJSONObject(i);
-                reservationIds.add(r.optString("id"));
-
-                Map<String, String> row = new HashMap<>();
-                row.put("title", r.optString("stationName") + "  ·  " + r.optString("status"));
-                String line = Format.dateTime(r.optString("reservationTime")) + "  ·  " + r.optDouble("energyKwh") + " kWh";
-                if (isOperator) {
-                    line += "  ·  " + r.optString("prosumerName");
-                }
-                row.put("subtitle", line);
-                rows.add(row);
+                rows.add(reservations.getJSONObject(i));
             }
         } catch (Exception ex) {
             Toast.makeText(this, ex.getMessage(), Toast.LENGTH_LONG).show();
         }
 
-        listView.setAdapter(new SimpleAdapter(this, rows, android.R.layout.simple_list_item_2,
-                new String[]{"title", "subtitle"}, new int[]{android.R.id.text1, android.R.id.text2}));
+        adapter.submit(rows);
         findViewById(R.id.textEmpty).setVisibility(rows.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
-    /** Puts a list of labels from the resources into a dropdown. */
-    private void setItems(Spinner spinner, int arrayId) {
-        ArrayAdapter<CharSequence> adapter =
-                ArrayAdapter.createFromResource(this, arrayId, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+    /** Shows the chosen option in a dropdown and searches again whenever the choice changes. */
+    private void setUpDropdown(MaterialAutoCompleteTextView dropdown, int arrayId, int selected, IntConsumer onSelect) {
+        dropdown.setText(getResources().getStringArray(arrayId)[selected], false);
+        dropdown.setOnItemClickListener((parent, view, position, id) -> {
+            onSelect.accept(position);
+            loadReservations();
+        });
     }
 
     /** Finds which dropdown option matches a value passed in, defaulting to the first. */

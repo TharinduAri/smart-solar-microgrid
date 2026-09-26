@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shared design tokens. The web portal uses the same values in web/src/theme.js,
+  so change a colour in both files to keep the two apps consistent.
+-->
 <resources>
-    <color name="solar_amber">#F59E0B</color>
-    <color name="solar_amber_dark">#B45309</color>
-    <color name="grid_navy">#0F172A</color>
-    <color name="surface">#F6F7FB</color>
-    <color name="white">#FFFFFF</color>
+    <color name="brand">#F59E0B</color>         <!-- solar amber: primary buttons, the sun logo -->
+    <color name="brand_strong">#B45309</color>  <!-- amber for text, links and focus rings -->
+    <color name="brand_soft">#FEF3C7</color>    <!-- tinted background behind amber icons -->
+    <color name="brand_deep">#78350F</color>    <!-- text on brand_soft -->
+    <color name="navy">#0F172A</color>          <!-- top bars and main text -->
+    <color name="navy_light">#1E293B</color>
+    <color name="navy_text">#CBD5E1</color>     <!-- secondary text on navy -->
+    <color name="brand_on_navy">#29F59E0B</color> <!-- 16% amber behind the sun logo on navy -->
+    <color name="page">#F6F7FB</color>          <!-- screen background -->
+    <color name="surface">#FFFFFF</color>       <!-- cards and dialogs -->
     <color name="text_muted">#64748B</color>
-    <color name="divider">#E2E8F0</color>
+    <color name="outline">#CBD5E1</color>       <!-- input borders -->
+    <color name="divider">#E2E8F0</color>       <!-- card borders -->
+    <color name="subtle">#F1F5F9</color>
+    <color name="error">#DC2626</color>
+    <color name="error_border">#FCA5A5</color>
+    <color name="white">#FFFFFF</color>
+
+    <!-- Status label and icon badge colours - the same pairs as "tones" in web/src/theme.js. -->
+    <color name="tone_success_fg">#166534</color>
+    <color name="tone_success_bg">#DCFCE7</color>
+    <color name="tone_warning_fg">#92400E</color>
+    <color name="tone_warning_bg">#FEF3C7</color>
+    <color name="tone_info_fg">#1E40AF</color>
+    <color name="tone_info_bg">#DBEAFE</color>
+    <color name="tone_neutral_fg">#475569</color>
+    <color name="tone_neutral_bg">#F1F5F9</color>
+    <color name="tone_danger_fg">#991B1B</color>
+    <color name="tone_danger_bg">#FEE2E2</color>
+
     <color name="ic_launcher_background">#0F172A</color>
 </resources>

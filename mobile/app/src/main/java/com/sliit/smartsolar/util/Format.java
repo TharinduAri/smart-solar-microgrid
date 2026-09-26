@@ -1,5 +1,7 @@
 package com.sliit.smartsolar.util;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -17,8 +19,15 @@ public final class Format {
             DateTimeFormatter.ofPattern("EEE d MMM, h:mm a", Locale.ENGLISH).withZone(ZoneId.systemDefault());
     private static final DateTimeFormatter TIME =
             DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH).withZone(ZoneId.systemDefault());
+    private static final DecimalFormat ENERGY =
+            new DecimalFormat("0.##", DecimalFormatSymbols.getInstance(Locale.ENGLISH));
 
     private Format() {
+    }
+
+    /** Formats an energy amount the way the web portal shows it, e.g. "10 kWh" or "15.5 kWh". */
+    public static String energy(double kwh) {
+        return ENERGY.format(kwh) + " kWh";
     }
 
     /** Formats an API timestamp as local day, date and time. */

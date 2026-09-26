@@ -1,6 +1,33 @@
 // Prosumer management - approves pending activations, edits profiles, and handles deactivations.
 import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  TextField,
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import { api } from '../api/client.js';
+import EmptyRow from '../components/EmptyRow.jsx';
+import PageHeader from '../components/PageHeader.jsx';
+import StatusChip from '../components/StatusChip.jsx';
+import { tokens, tones } from '../theme.js';
 
 export default function ProsumersPage() {
   const [prosumers, setProsumers] = useState([]);
@@ -77,206 +104,196 @@ export default function ProsumersPage() {
 
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="h4 mb-0">Solar Prosumer Accounts</h1>
-          <div className="text-muted small">
-            Prosumers register via mobile using their National Identity Card (NIC)
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Solar Prosumer Accounts"
+        subtitle="Prosumers register via mobile using their National Identity Card (NIC)"
+      />
 
-      {error && <div className="alert alert-danger alert-dismissible fade show">{error}</div>}
-      {success && <div className="alert alert-success alert-dismissible fade show">{success}</div>}
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
-      {/* Tabs & Search Filter */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3 align-items-center">
-            <div className="col-12 col-md-8">
-              <ul className="nav nav-pills">
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-1 px-3 ${filterTab === 'all' ? 'active bg-warning text-dark fw-semibold' : 'text-dark'}`}
-                    onClick={() => setFilterTab('all')}
-                  >
-                    All ({prosumers.length})
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-1 px-3 ${filterTab === 'pending' ? 'active bg-warning text-dark fw-semibold' : 'text-dark'}`}
-                    onClick={() => setFilterTab('pending')}
-                  >
-                    Pending Activation
-                    {pendingCount > 0 && (
-                      <span className="badge bg-danger ms-2">{pendingCount}</span>
-                    )}
-                  </button>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className={`nav-link py-1 px-3 ${filterTab === 'active' ? 'active bg-warning text-dark fw-semibold' : 'text-dark'}`}
-                    onClick={() => setFilterTab('active')}
-                  >
-                    Active ({prosumers.filter((p) => p.isActive).length})
-                  </button>
-                </li>
-                {deactivationCount > 0 && (
-                  <li className="nav-item">
-                    <button
-                      className={`nav-link py-1 px-3 ${filterTab === 'deactivationRequested' ? 'active bg-warning text-dark fw-semibold' : 'text-danger'}`}
-                      onClick={() => setFilterTab('deactivationRequested')}
-                    >
-                      Deactivation Requests ({deactivationCount})
-                    </button>
-                  </li>
-                )}
-              </ul>
-            </div>
-            <div className="col-12 col-md-4">
-              <input
-                className="form-control form-control-sm"
-                placeholder="Search by NIC, name, or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <Card>
+        {/* Tabs and search */}
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{
+            px: 2,
+            py: { xs: 2, md: 1 },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', md: 'center' },
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Tabs
+            value={filterTab}
+            onChange={(event, value) => setFilterTab(value)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            textColor="inherit"
+          >
+            <Tab value="all" label={`All (${prosumers.length})`} />
+            <Tab value="pending" label={<CountLabel text="Pending Activation" count={pendingCount} tone="danger" />} />
+            <Tab value="active" label={`Active (${prosumers.filter((p) => p.isActive).length})`} />
+            {(deactivationCount > 0 || filterTab === 'deactivationRequested') && (
+              <Tab value="deactivationRequested" label={`Deactivation Requests (${deactivationCount})`} />
+            )}
+          </Tabs>
+          <TextField
+            size="small"
+            placeholder="Search by NIC, name, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ minWidth: { md: 300 } }}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+        </Stack>
 
-      <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>NIC (Primary Key)</th>
-                <th>Full Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>NIC (Primary Key)</TableCell>
+                <TableCell>Full Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Address</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {filteredProsumers.map((p) => (
-                <tr key={p.id}>
-                  <td className="fw-semibold font-monospace">{p.nic}</td>
-                  <td>{p.fullName}</td>
-                  <td>{p.email}</td>
-                  <td>{p.phoneNumber ?? '—'}</td>
-                  <td className="small text-muted">{p.address ?? '—'}</td>
-                  <td>
-                    {p.isActive ? (
-                      <span className="badge text-bg-success">Active</span>
-                    ) : (
-                      <span className="badge text-bg-warning">Pending Activation</span>
-                    )}
-                    {p.deactivationRequested && (
-                      <span className="badge text-bg-danger ms-1">Deactivation Requested</span>
-                    )}
-                  </td>
-                  <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-outline-secondary me-1"
-                      onClick={() => setEditingProsumer({ ...p })}
-                    >
+                <TableRow key={p.id} hover>
+                  <TableCell sx={{ fontFamily: tokens.mono, fontWeight: 500 }}>{p.nic}</TableCell>
+                  <TableCell>{p.fullName}</TableCell>
+                  <TableCell>{p.email}</TableCell>
+                  <TableCell>{p.phoneNumber ?? '—'}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>{p.address ?? '—'}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                      {p.isActive ? (
+                        <StatusChip label="Active" tone="success" />
+                      ) : (
+                        <StatusChip label="Pending Activation" tone="warning" />
+                      )}
+                      {p.deactivationRequested && <StatusChip label="Deactivation Requested" tone="danger" />}
+                    </Stack>
+                  </TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    <Button size="small" onClick={() => setEditingProsumer({ ...p })} sx={{ mr: 1 }}>
                       Edit
-                    </button>
-                    <button
-                      className={`btn btn-sm ${p.isActive ? 'btn-outline-danger' : 'btn-warning fw-semibold'}`}
-                      onClick={() => setActive(p, !p.isActive)}
-                    >
-                      {p.isActive ? 'Deactivate' : 'Activate Account'}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                    {p.isActive ? (
+                      <Button size="small" variant="outlined" color="error" onClick={() => setActive(p, false)}>
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button size="small" variant="contained" onClick={() => setActive(p, true)}>
+                        Activate Account
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
               ))}
               {filteredProsumers.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
-                    No prosumer accounts found matching the criteria.
-                  </td>
-                </tr>
+                <EmptyRow colSpan={7} text="No prosumer accounts found matching the criteria." />
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
 
-      {/* Edit Prosumer Modal */}
+      {/* Edit prosumer dialog */}
       {editingProsumer && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Prosumer Profile</h5>
-                <button type="button" className="btn-close" onClick={() => setEditingProsumer(null)} />
-              </div>
-              <form onSubmit={handleUpdateProfile}>
-                <div className="modal-body">
-                  {modalError && <div className="alert alert-danger py-2 small">{modalError}</div>}
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">NIC (Read Only)</label>
-                    <input className="form-control font-monospace" value={editingProsumer.nic} disabled />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Full Name</label>
-                    <input
-                      className="form-control"
-                      value={editingProsumer.fullName}
-                      onChange={(e) => setEditingProsumer({ ...editingProsumer, fullName: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Email</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      value={editingProsumer.email}
-                      onChange={(e) => setEditingProsumer({ ...editingProsumer, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Phone Number</label>
-                    <input
-                      className="form-control"
-                      value={editingProsumer.phoneNumber ?? ''}
-                      onChange={(e) => setEditingProsumer({ ...editingProsumer, phoneNumber: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Address</label>
-                    <textarea
-                      rows={2}
-                      className="form-control"
-                      value={editingProsumer.address ?? ''}
-                      onChange={(e) => setEditingProsumer({ ...editingProsumer, address: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setEditingProsumer(null)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-semibold">
-                    Save Profile
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          open
+          onClose={() => setEditingProsumer(null)}
+          maxWidth="sm"
+          fullWidth
+          slotProps={{ paper: { component: 'form', onSubmit: handleUpdateProfile } }}
+        >
+          <DialogTitle>Edit Prosumer Profile</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              {modalError && <Alert severity="error">{modalError}</Alert>}
+              <TextField
+                label="NIC (Read Only)"
+                value={editingProsumer.nic}
+                disabled
+                fullWidth
+                slotProps={{ htmlInput: { style: { fontFamily: tokens.mono } } }}
+              />
+              <TextField
+                label="Full Name"
+                value={editingProsumer.fullName}
+                onChange={(e) => setEditingProsumer({ ...editingProsumer, fullName: e.target.value })}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={editingProsumer.email}
+                onChange={(e) => setEditingProsumer({ ...editingProsumer, email: e.target.value })}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Phone Number"
+                value={editingProsumer.phoneNumber ?? ''}
+                onChange={(e) => setEditingProsumer({ ...editingProsumer, phoneNumber: e.target.value })}
+                fullWidth
+              />
+              <TextField
+                label="Address"
+                value={editingProsumer.address ?? ''}
+                onChange={(e) => setEditingProsumer({ ...editingProsumer, address: e.target.value })}
+                multiline
+                minRows={2}
+                fullWidth
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button color="secondary" onClick={() => setEditingProsumer(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Save Profile
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
     </>
+  );
+}
+
+// Tab label with a small count badge, shown only when the count is above zero.
+function CountLabel({ text, count, tone }) {
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+      {text}
+      {count > 0 && (
+        <Chip size="small" label={count} sx={{ height: 20, bgcolor: tones[tone].bg, color: tones[tone].fg }} />
+      )}
+    </Box>
   );
 }
