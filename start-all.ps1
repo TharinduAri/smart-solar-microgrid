@@ -155,7 +155,7 @@ if ($apiListening) {
     Ok "Web API is already running on http://localhost:5205"
 } else {
     Write-Host "    starting Web API in a new window..." -ForegroundColor Gray
-    $apiLaunch = "-NoExit -Command ""Set-Location -LiteralPath '$rootDir\backend'; `$host.UI.RawUI.WindowTitle = 'Smart Solar - Web API (Port 5205)'; dotnet run --project SmartSolar.Api --urls http://localhost:5205"""
+    $apiLaunch = "-NoExit -Command ""Set-Location -LiteralPath '$rootDir\backend'; `$host.UI.RawUI.WindowTitle = 'Smart Solar - Web API (Port 5205)'; dotnet run --project SmartSolar.Api --urls http://0.0.0.0:5205"""
     Start-Process powershell -ArgumentList $apiLaunch
 
     # Readiness polling: wait up to 30 seconds for ASP.NET Core Kestrel to bind
