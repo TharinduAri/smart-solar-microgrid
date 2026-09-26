@@ -93,6 +93,11 @@ npm install
 npm run dev              # http://localhost:5173
 ```
 
+To pick a microgrid node's GPS position on a map instead of typing it, set
+`VITE_GOOGLE_MAPS_API_KEY` in `web/.env` to a key with the **Maps JavaScript API** enabled
+(restrict it to `http://localhost:5173/*` and your deployed web address). Without a key the
+Nodes page falls back to manual latitude / longitude entry.
+
 ### 3. Android application (`mobile/`)
 
 Quickest way, from PowerShell in the repository root:
@@ -110,8 +115,9 @@ To do it by hand instead, open the `mobile/` folder in Android Studio (compileSd
    `MAPS_API_KEY` (Google Maps Android API key).
    The Gradle wrapper JAR/scripts are not committed — Android Studio generates them on
    first open (or run `gradle wrapper` if you have Gradle installed).
-2. The API base URL is `http://10.0.2.2:5205` (the host machine as seen from the
-   emulator) — change `API_BASE_URL` in `app/build.gradle` for a physical device.
+2. The API base URL is `http://127.0.0.1:5205`. `run-mobile.ps1` runs
+   `adb reverse tcp:5205 tcp:5205`, which forwards that port to the API on your PC for
+   both a USB phone and an emulator. When running from Android Studio, run that command yourself.
 3. Run the `app` configuration.
 
 ---
