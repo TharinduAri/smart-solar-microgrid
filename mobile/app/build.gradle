@@ -23,8 +23,9 @@ android {
         versionCode 1
         versionName "1.0"
 
-        // Base URL of the C# Web API. 10.0.2.2 is the host machine from the emulator.
-        buildConfigField "String", "API_BASE_URL", "\"http://10.0.2.2:5205\""
+        // Base URL of the C# Web API. run-mobile.ps1 runs "adb reverse tcp:5205 tcp:5205",
+        // so 127.0.0.1 on a USB phone or an emulator reaches the API on the development PC.
+        buildConfigField "String", "API_BASE_URL", "\"http://127.0.0.1:5205\""
 
         // Supply your key in local.properties as MAPS_API_KEY=xxxx
         manifestPlaceholders = [MAPS_API_KEY: localProperties.getProperty("MAPS_API_KEY", "")]

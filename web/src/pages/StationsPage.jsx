@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import LocationPicker, { MapsProvider } from '../components/LocationPicker.jsx';
 
 const emptyStationForm = { name: '', location: '', latitude: '', longitude: '', capacityKwh: '', totalSlots: '' };
 const emptySlotForm = { startTime: '', endTime: '', totalSlots: '' };
@@ -181,7 +182,7 @@ export default function StationsPage() {
   }
 
   return (
-    <>
+    <MapsProvider>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="h4 mb-0">Microgrid Nodes & Battery Storage</h1>
       </div>
@@ -197,12 +198,10 @@ export default function StationsPage() {
               {[
                 ['name', 'Name', 'text'],
                 ['location', 'Location', 'text'],
-                ['latitude', 'Latitude', 'number'],
-                ['longitude', 'Longitude', 'number'],
                 ['capacityKwh', 'Capacity (kW/h)', 'number'],
                 ['totalSlots', 'Battery slots', 'number'],
               ].map(([key, label, type]) => (
-                <div className="col-6 col-lg-2" key={key}>
+                <div className="col-6 col-lg-3" key={key}>
                   <input
                     className="form-control"
                     type={type}
@@ -214,6 +213,14 @@ export default function StationsPage() {
                   />
                 </div>
               ))}
+              <div className="col-12">
+                <label className="form-label small text-muted mb-1">GPS position</label>
+                <LocationPicker
+                  latitude={createForm.latitude}
+                  longitude={createForm.longitude}
+                  onChange={(coords) => setCreateForm((form) => ({ ...form, ...coords }))}
+                />
+              </div>
               <div className="col-12">
                 <button className="btn btn-warning btn-sm fw-semibold">Add node</button>
               </div>
@@ -300,7 +307,7 @@ export default function StationsPage() {
       {/* Edit Station Modal */}
       {editingStation && (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
+          <div className="modal-dialog modal-lg modal-dialog-scrollable">
             <div className="modal-content border-0 shadow">
               <div className="modal-header">
                 <h5 className="modal-title">Edit Microgrid Node</h5>
@@ -326,29 +333,13 @@ export default function StationsPage() {
                       required
                     />
                   </div>
-                  <div className="row g-2 mb-3">
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Latitude</label>
-                      <input
-                        type="number"
-                        step="any"
-                        className="form-control"
-                        value={editingStation.latitude}
-                        onChange={(e) => setEditingStation({ ...editingStation, latitude: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Longitude</label>
-                      <input
-                        type="number"
-                        step="any"
-                        className="form-control"
-                        value={editingStation.longitude}
-                        onChange={(e) => setEditingStation({ ...editingStation, longitude: e.target.value })}
-                        required
-                      />
-                    </div>
+                  <div className="mb-3">
+                    <label className="form-label small text-muted">GPS position</label>
+                    <LocationPicker
+                      latitude={editingStation.latitude}
+                      longitude={editingStation.longitude}
+                      onChange={(coords) => setEditingStation((station) => ({ ...station, ...coords }))}
+                    />
                   </div>
                   <div className="row g-2">
                     <div className="col-6">
@@ -544,6 +535,6 @@ export default function StationsPage() {
           </div>
         </div>
       )}
-    </>
+    </MapsProvider>
   );
 }

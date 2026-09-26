@@ -183,6 +183,11 @@ if (-not $devices) {
 }
 Ok "device ready: $((& $adb devices | Select-String '\tdevice$').Line -replace '\t.*','')"
 
+# The app calls http://127.0.0.1:5205; forward that port over USB to the Web API on this PC.
+& $adb reverse tcp:5205 tcp:5205 | Out-Null
+if ($LASTEXITCODE -eq 0) { Ok "port 5205 forwarded to this PC (adb reverse)" }
+else { Warn "adb reverse failed - the app will not reach the Web API." }
+
 # --- 7. The Web API ----------------------------------------------------------
 if (-not $NoBackend) {
     Step "Checking the Web API on port 5205"
