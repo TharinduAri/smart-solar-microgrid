@@ -23,9 +23,17 @@ android {
         versionCode 1
         versionName "1.0"
 
+
         // Base URL of the C# Web API. run-mobile.ps1 runs "adb reverse tcp:5205 tcp:5205",
         // so 127.0.0.1 on a USB phone or an emulator reaches the API on the development PC.
         buildConfigField "String", "API_BASE_URL", "\"http://127.0.0.1:5205\""
+
+        // Base URL of the C# Web API.
+        // For physical device over USB (with adb reverse): http://127.0.0.1:5205
+        // For Android Emulator: http://10.0.2.2:5205
+        // Override in local.properties via API_BASE_URL=http://...
+        def apiBaseUrl = localProperties.getProperty("API_BASE_URL", "http://127.0.0.1:5205")
+        buildConfigField "String", "API_BASE_URL", "\"$apiBaseUrl\""
 
         // Supply your key in local.properties as MAPS_API_KEY=xxxx
         manifestPlaceholders = [MAPS_API_KEY: localProperties.getProperty("MAPS_API_KEY", "")]

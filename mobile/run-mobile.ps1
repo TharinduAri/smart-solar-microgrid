@@ -48,19 +48,89 @@ function Confirm-Step($question) {
 Say "Smart Solar - Android first launch"
 Say "=================================="
 
+function Get-JavaMajorVersion($javaExe) {
+    if (-not (Test-Path $javaExe)) { return $null }
+    $verOutput = cmd.exe /c "`"$javaExe`" -version 2>&1" | Out-String
+    if ($verOutput -match 'version "(?<ver>\d+)(\.|\+|-)?') {
+        $v = [int]$matches['ver']
+        if ($v -eq 1 -and $verOutput -match 'version "1\.(?<ver2>\d+)') {
+            return [int]$matches['ver2']
+        }
+        return $v
+    }
+    return $null
+}
+
 # --- 1. Java -----------------------------------------------------------------
-Step "Looking for Java"
-$studioJbr = "C:\Program Files\Android\Android Studio\jbr"
-if (Test-Path (Join-Path $studioJbr "bin\java.exe")) {
-    $env:JAVA_HOME = $studioJbr
-    Ok "using the Java bundled with Android Studio"
+Step "Looking for Java (JDK 17 or 21 required)"
+$javaCandidates = @()
+if ($env:JAVA_HOME) { $javaCandidates += $env:JAVA_HOME }
+$javaCandidates += "C:\Program Files\Android\Android Studio\jbr"
+$javaCandidates += (Join-Path $cacheDir "jdk-17")
+Get-ChildItem $cacheDir -Directory -Filter "jdk-17*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem $cacheDir -Directory -Filter "jdk-21*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+
+# Common JDK install locations on Windows (Adoptium, Microsoft, Oracle)
+Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Filter "jdk-17*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Filter "jdk-21*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem "C:\Program Files\Microsoft" -Filter "jdk-17*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem "C:\Program Files\Microsoft" -Filter "jdk-21*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem "C:\Program Files\Java" -Filter "jdk-17*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+Get-ChildItem "C:\Program Files\Java" -Filter "jdk-21*" -ErrorAction SilentlyContinue | ForEach-Object { $javaCandidates += $_.FullName }
+
+$validJavaHome = $null
+foreach ($cand in $javaCandidates) {
+    if (-not $cand) { continue }
+    $exe = Join-Path $cand "bin\java.exe"
+    if (Test-Path $exe) {
+        $maj = Get-JavaMajorVersion $exe
+        if ($maj -ge 17 -and $maj -le 21) {
+            $validJavaHome = $cand
+            break
+        }
+    }
 }
-elseif ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin\java.exe"))) {
-    Ok "using JAVA_HOME ($env:JAVA_HOME)"
+
+if (-not $validJavaHome) {
+    Warn "Compatible Java (JDK 17 or 21) was not found."
+    Say "    Android Gradle Plugin 8.7.3 requires Java 17 to 21 (Java 22+ is unsupported)."
+
+    $installed = $false
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        if (Confirm-Step "Install Eclipse Temurin OpenJDK 17 via winget now?") {
+            Say "    Installing OpenJDK 17 via winget..."
+            & winget install --id EclipseAdoptium.Temurin.17.jdk -e --silent --accept-source-agreements --accept-package-agreements
+            $adoptium = Get-ChildItem "C:\Program Files\Eclipse Adoptium" -Filter "jdk-17*" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($adoptium -and (Test-Path (Join-Path $adoptium.FullName "bin\java.exe"))) {
+                $validJavaHome = $adoptium.FullName
+                $installed = $true
+            }
+        }
+    }
+
+    if (-not $installed -and -not $validJavaHome) {
+        if (Confirm-Step "Download portable OpenJDK 17 to $cacheDir ?") {
+            New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+            $jdkZip = Join-Path $cacheDir "openjdk-17.zip"
+            Say "    downloading OpenJDK 17 (about 180 MB)..."
+            $jdkUrl = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.12%2B7/OpenJDK17U-jdk_x64_windows_hotspot_17.0.12_7.zip"
+            Invoke-WebRequest $jdkUrl -OutFile $jdkZip
+            Say "    extracting OpenJDK 17..."
+            Expand-Archive $jdkZip -DestinationPath $cacheDir -Force
+            $extracted = Get-ChildItem $cacheDir -Directory -Filter "jdk-17*" | Select-Object -First 1
+            if ($extracted) {
+                $validJavaHome = $extracted.FullName
+            }
+        }
+    }
+
+    if (-not $validJavaHome) {
+        Fail "No compatible Java 17/21 found. Please run: winget install EclipseAdoptium.Temurin.17.jdk"
+    }
 }
-else {
-    Fail "No Java found. Install Android Studio (it includes Java), then run this again."
-}
+
+$env:JAVA_HOME = $validJavaHome
+Ok "using Java ($env:JAVA_HOME)"
 
 # --- 2. Android SDK ----------------------------------------------------------
 Step "Looking for the Android SDK"
@@ -72,7 +142,12 @@ $localProps = Join-Path $mobileDir "local.properties"
 if (Test-Path $localProps) {
     $sdkLine = Select-String -Path $localProps -Pattern "^\s*sdk\.dir\s*=" -ErrorAction SilentlyContinue
     if ($sdkLine) {
-        $sdkCandidates += ($sdkLine.Line -replace "^\s*sdk\.dir\s*=", "").Trim().Replace("\\", "\")
+        $parsedSdk = ($sdkLine.Line -replace "^\s*sdk\.dir\s*=", "").Trim()
+        $parsedSdk = $parsedSdk.Replace("\:", ":").Replace("\\", "\")
+        # Ignore template placeholders like <you> or <YourUsername>
+        if ($parsedSdk -notmatch "<.*>" -and $parsedSdk -match "^[A-Za-z]:\\") {
+            $sdkCandidates += $parsedSdk
+        }
     }
 }
 $sdkCandidates += "C:\Android\Sdk"
@@ -80,25 +155,51 @@ $sdkCandidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk")
 
 $sdk = $null
 foreach ($candidate in $sdkCandidates) {
-    if ($candidate -and (Test-Path (Join-Path $candidate "platform-tools\adb.exe"))) { $sdk = $candidate; break }
+    if ($candidate -and (Test-Path (Join-Path $candidate "platform-tools\adb.exe"))) {
+        $sdk = $candidate
+        break
+    }
 }
 if (-not $sdk) {
     foreach ($candidate in $sdkCandidates) {
-        if ($candidate -and (Test-Path $candidate)) { $sdk = $candidate; break }
+        $candidateSdkManager = Join-Path $candidate "cmdline-tools\latest\bin\sdkmanager.bat"
+        if ($candidate -and (Test-Path $candidateSdkManager)) {
+            $sdk = $candidate
+            break
+        }
     }
 }
 
 if (-not $sdk) {
     $sdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
-    Warn "No Android SDK found. It needs about 1 GB of downloads."
+    Warn "No functional Android SDK found. It needs about 1 GB of downloads."
     if (-not (Confirm-Step "Download the Android SDK to $sdk ?")) { Fail "Cancelled." }
 
     $tools = Join-Path $cacheDir "cmdline-tools.zip"
-    New-Item -ItemType Directory -Force -Path $cacheDir, (Join-Path $sdk "cmdline-tools") | Out-Null
-    Say "    downloading the Android command line tools..."
-    Invoke-WebRequest "https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip" -OutFile $tools
+    New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+
+    # Remove 0-byte or corrupted partial downloads from previous interruptions
+    if ((Test-Path $tools) -and ((Get-Item $tools).Length -lt 10000000)) {
+        Remove-Item $tools -Force
+    }
+
+    if (-not (Test-Path $tools)) {
+        Say "    downloading the Android command line tools (about 150 MB)..."
+        Invoke-WebRequest "https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip" -OutFile $tools
+    }
+
+    # Clean extract directory in cacheDir if present
+    $extractedCmd = Join-Path $cacheDir "cmdline-tools"
+    if (Test-Path $extractedCmd) { Remove-Item $extractedCmd -Recurse -Force }
+
+    Say "    extracting command line tools..."
     Expand-Archive $tools -DestinationPath $cacheDir -Force
-    Move-Item (Join-Path $cacheDir "cmdline-tools") (Join-Path $sdk "cmdline-tools\latest") -Force
+
+    # Place into $sdk\cmdline-tools\latest
+    $destLatest = Join-Path $sdk "cmdline-tools\latest"
+    if (Test-Path $destLatest) { Remove-Item $destLatest -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path (Split-Path $destLatest -Parent) | Out-Null
+    Move-Item (Join-Path $cacheDir "cmdline-tools") $destLatest -Force
 }
 Ok "SDK at $sdk"
 
@@ -120,20 +221,34 @@ if ($missing.Count -gt 0) {
     if (-not $sdkManager) { Fail "Missing $($missing -join ', ') and sdkmanager was not found. Install them in Android Studio (Tools > SDK Manager)." }
     Warn "Missing: $($missing -join ', ')"
     if (-not (Confirm-Step "Download them now?")) { Fail "Cancelled." }
-    Say "y" | & $sdkManager "--sdk_root=$sdk" "--licenses" | Out-Null
-    & $sdkManager "--sdk_root=$sdk" $missing
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        cmd.exe /c "for /l %i in (1,1,25) do @echo y" | cmd.exe /c "`"$sdkManager`" --sdk_root=`"$sdk`" --licenses" | Out-Null
+        cmd.exe /c "`"$sdkManager`" --sdk_root=`"$sdk`" $($missing -join ' ')"
+    }
+    finally {
+        $ErrorActionPreference = $prevEap
+    }
 }
 Ok "SDK packages present"
 
 # --- 4. local.properties -----------------------------------------------------
 Step "Checking local.properties"
 if (-not (Test-Path $localProps)) {
-    "sdk.dir=$($sdk.Replace('\', '\\'))`r`nMAPS_API_KEY=" | Out-File $localProps -Encoding ascii
-    Warn "Created $localProps - add your MAPS_API_KEY to use the map screen."
+    "sdk.dir=$($sdk.Replace('\', '\\'))`r`nMAPS_API_KEY=`r`nAPI_BASE_URL=http://127.0.0.1:5205" | Out-File $localProps -Encoding ascii
+    Warn "Created $localProps - default API_BASE_URL set to http://127.0.0.1:5205 (for physical phone via USB)."
+    Warn "Add your MAPS_API_KEY in $localProps to use the map screen."
 }
 else {
     $keyLine = Select-String -Path $localProps -Pattern "^\s*MAPS_API_KEY\s*=\s*\S" -ErrorAction SilentlyContinue
     if (-not $keyLine) { Warn "MAPS_API_KEY is empty in local.properties - the map screen will be blank." }
+
+    $apiLine = Select-String -Path $localProps -Pattern "^\s*API_BASE_URL\s*=" -ErrorAction SilentlyContinue
+    if (-not $apiLine) {
+        Add-Content -Path $localProps -Value "`r`nAPI_BASE_URL=http://127.0.0.1:5205"
+        Say "    added API_BASE_URL=http://127.0.0.1:5205 to local.properties"
+    }
     Ok "local.properties found"
 }
 
@@ -160,7 +275,21 @@ else {
 }
 
 # --- 6. A phone or emulator --------------------------------------------------
-Step "Looking for a phone or emulator"
+Step "Looking for an Android phone or emulator"
+
+# Check if an unauthorized physical device is connected
+$unauth = (& $adb devices | Select-String "\tunauthorized$")
+if ($unauth) {
+    Warn "Android device detected, but unauthorized!"
+    Say "    Please unlock your phone and tap 'Allow USB debugging' (check 'Always allow')."
+    Say "    Waiting for authorization (up to 30 seconds)..."
+    for ($i = 0; $i -lt 15; $i++) {
+        Start-Sleep -Seconds 2
+        $devices = (& $adb devices | Select-String "\tdevice$")
+        if ($devices) { break }
+    }
+}
+
 $devices = (& $adb devices | Select-String "\tdevice$")
 if (-not $devices) {
     $emulator = Join-Path $sdk "emulator\emulator.exe"
@@ -168,7 +297,18 @@ if (-not $devices) {
     if (Test-Path $emulator) { $avds = & $emulator -list-avds }
 
     if ($avds.Count -eq 0) {
-        Fail "No device is connected and no emulator exists.`n  Create one in Android Studio: Device Manager > Create Virtual Device > Pixel 7 > API 35.`n  Or plug in a phone with USB debugging turned on, then run this again."
+        Fail @"
+No Android phone is connected and no emulator exists.
+
+To run on your actual Android phone:
+  1. Enable Developer Options:
+     Settings -> About Phone -> tap 'Build Number' 7 times.
+  2. Enable USB Debugging:
+     Settings -> System / Developer Options -> toggle 'USB Debugging' ON.
+  3. Connect phone to PC using a USB data cable (select 'File Transfer' mode).
+  4. Unlock your phone screen and tap 'Allow' when the 'Allow USB debugging?' popup appears.
+  5. Run this script again!
+"@
     }
 
     $avd = $avds[0]
@@ -181,7 +321,15 @@ if (-not $devices) {
         Start-Sleep -Seconds 2
     }
 }
-Ok "device ready: $((& $adb devices | Select-String '\tdevice$').Line -replace '\t.*','')"
+
+$deviceLine = (& $adb devices | Select-String '\tdevice$').Line
+$deviceId = ($deviceLine -replace '\t.*','').Trim()
+Ok "device ready: $deviceId"
+
+# Configure ADB reverse port forwarding so physical phone can reach PC API via http://127.0.0.1:5205
+Say "    configuring reverse port forwarding (port 5205)..."
+& $adb reverse tcp:5205 tcp:5205 | Out-Null
+Ok "reverse tunnel active: phone http://127.0.0.1:5205 -> PC localhost:5205"
 
 # The app calls http://127.0.0.1:5205; forward that port over USB to the Web API on this PC.
 & $adb reverse tcp:5205 tcp:5205 | Out-Null
