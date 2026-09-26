@@ -380,79 +380,6 @@ export default function StationsPage() {
 
       {/* Edit station dialog */}
       {editingStation && (
-<<<<<<< HEAD
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Microgrid Node</h5>
-                <button type="button" className="btn-close" onClick={() => setEditingStation(null)} />
-              </div>
-              <form onSubmit={handleUpdateStation}>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Node Name</label>
-                    <input
-                      className="form-control"
-                      value={editingStation.name}
-                      onChange={(e) => setEditingStation({ ...editingStation, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Location</label>
-                    <input
-                      className="form-control"
-                      value={editingStation.location}
-                      onChange={(e) => setEditingStation({ ...editingStation, location: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">GPS position</label>
-                    <LocationPicker
-                      latitude={editingStation.latitude}
-                      longitude={editingStation.longitude}
-                      onChange={(coords) => setEditingStation((station) => ({ ...station, ...coords }))}
-                    />
-                  </div>
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Capacity (kW/h)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        className="form-control"
-                        value={editingStation.capacityKwh}
-                        onChange={(e) => setEditingStation({ ...editingStation, capacityKwh: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Battery Storage Slots</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={editingStation.totalSlots}
-                        onChange={(e) => setEditingStation({ ...editingStation, totalSlots: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setEditingStation(null)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-semibold">
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-=======
         <Dialog
           open
           onClose={() => setEditingStation(null)}
@@ -477,26 +404,16 @@ export default function StationsPage() {
                 required
                 fullWidth
               />
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="Latitude"
-                  type="number"
-                  value={editingStation.latitude}
-                  onChange={(e) => setEditingStation({ ...editingStation, latitude: e.target.value })}
-                  required
-                  fullWidth
-                  slotProps={{ htmlInput: { step: 'any' } }}
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  GPS position
+                </Typography>
+                <LocationPicker
+                  latitude={editingStation.latitude}
+                  longitude={editingStation.longitude}
+                  onChange={(coords) => setEditingStation((station) => ({ ...station, ...coords }))}
                 />
-                <TextField
-                  label="Longitude"
-                  type="number"
-                  value={editingStation.longitude}
-                  onChange={(e) => setEditingStation({ ...editingStation, longitude: e.target.value })}
-                  required
-                  fullWidth
-                  slotProps={{ htmlInput: { step: 'any' } }}
-                />
-              </Stack>
+              </Box>
               <Stack direction="row" spacing={2}>
                 <TextField
                   label="Capacity (kW/h)"
@@ -527,7 +444,6 @@ export default function StationsPage() {
             </Button>
           </DialogActions>
         </Dialog>
->>>>>>> 029e1eb (Unify web/mobile UI with Material Design 3)
       )}
 
       {/* Slot management dialog */}
@@ -662,12 +578,8 @@ export default function StationsPage() {
           </DialogActions>
         </Dialog>
       )}
-<<<<<<< HEAD
-    </MapsProvider>
-=======
 
       <ConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
-    </>
->>>>>>> 029e1eb (Unify web/mobile UI with Material Design 3)
+    </MapsProvider>
   );
 }
