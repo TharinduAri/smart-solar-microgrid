@@ -1,79 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Booking list with the status, time and NIC search filters. -->
+<!-- Booking list with the status, date and NIC search filters, like the web Reservations page. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/textTitle"
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/appBar"
+        style="@style/Widget.SmartSolar.Toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:textColor="@color/grid_navy"
-        android:textSize="22sp"
-        android:textStyle="bold" />
+        android:layout_height="wrap_content" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp">
 
-        <Spinner
-            android:id="@+id/spinnerStatus"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1" />
-
-        <Spinner
-            android:id="@+id/spinnerTime"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <EditText
-            android:id="@+id/inputNic"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:autofillHints=""
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.SmartSolar.TextInputLayout.Dropdown"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:hint="@string/label_status_filter">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/inputStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    app:simpleItems="@array/status_filter" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.SmartSolar.TextInputLayout.Dropdown"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:hint="@string/label_time_filter">
+
+                <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                    android:id="@+id/inputTime"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    app:simpleItems="@array/time_filter" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layoutNic"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:hint="@string/hint_search_nic"
-            android:inputType="text"
-            android:visibility="gone" />
+            android:visibility="gone"
+            app:endIconContentDescription="@string/search"
+            app:endIconDrawable="@drawable/ic_search"
+            app:endIconMode="custom">
 
-        <Button
-            android:id="@+id/buttonSearch"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:backgroundTint="@color/solar_amber"
-            android:text="@string/search"
-            android:textColor="@color/grid_navy" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/inputNic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autofillHints=""
+                android:imeOptions="actionSearch"
+                android:inputType="textCapCharacters" />
+        </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 
     <TextView
         android:id="@+id/textEmpty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="32dp"
         android:gravity="center"
         android:text="@string/no_bookings"
-        android:textColor="@color/text_muted"
+        android:textAppearance="@style/TextAppearance.SmartSolar.Muted"
         android:visibility="gone" />
 
-    <ListView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/listReservations"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="8dp"
-        android:divider="@color/divider"
-        android:dividerHeight="1dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingStart="16dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp" />
 </LinearLayout>

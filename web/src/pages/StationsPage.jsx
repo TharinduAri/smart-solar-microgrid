@@ -1,11 +1,50 @@
 // Microgrid node management - lists nodes, edits nodes, manages slots, and handles lifecycle.
 import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import CloseIcon from '@mui/icons-material/Close';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import LocationPicker, { MapsProvider } from '../components/LocationPicker.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import EmptyRow from '../components/EmptyRow.jsx';
+import PageHeader from '../components/PageHeader.jsx';
+import StatusChip from '../components/StatusChip.jsx';
 
 const emptyStationForm = { name: '', location: '', latitude: '', longitude: '', capacityKwh: '', totalSlots: '' };
 const emptySlotForm = { startTime: '', endTime: '', totalSlots: '' };
+
+const stationFields = [
+  ['name', 'Name', 'text'],
+  ['location', 'Location', 'text'],
+  ['capacityKwh', 'Capacity (kW/h)', 'number'],
+  ['totalSlots', 'Battery slots', 'number'],
+];
 
 export default function StationsPage() {
   const [stations, setStations] = useState([]);
@@ -18,6 +57,7 @@ export default function StationsPage() {
   const [error, setError] = useState('');
   const [slotError, setSlotError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmRequest, setConfirmRequest] = useState(null);
   const { isBackoffice } = useAuth();
 
   // Reloads the node list from the Web API.
@@ -77,11 +117,18 @@ export default function StationsPage() {
     }
   }
 
+  // Asks before deleting a node.
+  function handleDeleteStation(station) {
+    setConfirmRequest({
+      title: 'Delete microgrid node?',
+      message: `Are you sure you want to delete station "${station.name}"?`,
+      confirmLabel: 'Delete',
+      onConfirm: () => deleteStation(station),
+    });
+  }
+
   // Deletes a node if no active reservations exist.
-  async function handleDeleteStation(station) {
-    if (!window.confirm(`Are you sure you want to delete station "${station.name}"?`)) {
-      return;
-    }
+  async function deleteStation(station) {
     setError('');
     setSuccess('');
     try {
@@ -157,9 +204,17 @@ export default function StationsPage() {
     }
   }
 
+  // Asks before deleting a booking slot.
+  function handleDeleteSlot(slotId) {
+    setConfirmRequest({
+      title: 'Delete this booking slot window?',
+      confirmLabel: 'Delete',
+      onConfirm: () => deleteSlot(slotId),
+    });
+  }
+
   // Deletes an unused booking slot.
-  async function handleDeleteSlot(slotId) {
-    if (!window.confirm('Delete this booking slot window?')) return;
+  async function deleteSlot(slotId) {
     setSlotError('');
     try {
       await api.del(`/api/stations/slots/${slotId}`);
@@ -181,360 +236,350 @@ export default function StationsPage() {
     });
   }
 
+  // Leaves slot edit mode and resets the form for a new window.
+  function cancelEditSlot() {
+    setEditingSlotId(null);
+    setSlotForm({ ...emptySlotForm, totalSlots: selectedStationForSlots.totalSlots });
+  }
+
   return (
     <MapsProvider>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h4 mb-0">Microgrid Nodes & Battery Storage</h1>
-      </div>
+      <PageHeader
+        title="Microgrid Nodes & Battery Storage"
+        subtitle="Solar grid hubs, their GPS position and bookable battery slot windows"
+      />
 
-      {error && <div className="alert alert-danger alert-dismissible fade show">{error}</div>}
-      {success && <div className="alert alert-success alert-dismissible fade show">{success}</div>}
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
       {isBackoffice && (
-        <div className="card mb-4 border-0 shadow-sm">
-          <div className="card-body">
-            <h2 className="h6 text-muted mb-3">Register a new solar grid hub</h2>
-            <form className="row g-2" onSubmit={handleCreate}>
-              {[
-                ['name', 'Name', 'text'],
-                ['location', 'Location', 'text'],
-                ['capacityKwh', 'Capacity (kW/h)', 'number'],
-                ['totalSlots', 'Battery slots', 'number'],
-              ].map(([key, label, type]) => (
-                <div className="col-6 col-lg-3" key={key}>
-                  <input
-                    className="form-control"
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="subtitle1" component="h2" sx={{ mb: 2 }}>
+              Register a new solar grid hub
+            </Typography>
+            <Box component="form" onSubmit={handleCreate}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+                }}
+              >
+                {stationFields.map(([key, label, type]) => (
+                  <TextField
+                    key={key}
+                    label={label}
                     type={type}
-                    step="any"
-                    placeholder={label}
+                    size="small"
                     value={createForm[key]}
                     onChange={(e) => setCreateForm({ ...createForm, [key]: e.target.value })}
                     required
+                    slotProps={{ htmlInput: { step: 'any' } }}
                   />
-                </div>
-              ))}
-              <div className="col-12">
-                <label className="form-label small text-muted mb-1">GPS position</label>
+                ))}
+              </Box>
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  GPS position
+                </Typography>
                 <LocationPicker
                   latitude={createForm.latitude}
                   longitude={createForm.longitude}
                   onChange={(coords) => setCreateForm((form) => ({ ...form, ...coords }))}
                 />
-              </div>
-              <div className="col-12">
-                <button className="btn btn-warning btn-sm fw-semibold">Add node</button>
-              </div>
-            </form>
-          </div>
-        </div>
+              </Box>
+              <Button type="submit" variant="contained" startIcon={<AddIcon />} sx={{ mt: 2 }}>
+                Add node
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>Name</th>
-                <th>Location</th>
-                <th>GPS</th>
-                <th>Capacity</th>
-                <th>Slots</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Location</TableCell>
+                <TableCell>GPS</TableCell>
+                <TableCell>Capacity</TableCell>
+                <TableCell>Slots</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {stations.map((station) => (
-                <tr key={station.id}>
-                  <td className="fw-semibold">{station.name}</td>
-                  <td>{station.location}</td>
-                  <td className="small text-muted">
+                <TableRow key={station.id} hover>
+                  <TableCell sx={{ fontWeight: 500 }}>{station.name}</TableCell>
+                  <TableCell>{station.location}</TableCell>
+                  <TableCell sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}>
                     {station.latitude.toFixed(4)}, {station.longitude.toFixed(4)}
-                  </td>
-                  <td>{station.capacityKwh} kW/h</td>
-                  <td>{station.totalSlots} bays</td>
-                  <td>
-                    <span className={`badge ${station.isActive ? 'text-bg-success' : 'text-bg-secondary'}`}>
-                      {station.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="text-end">
-                    <button
-                      className="btn btn-sm btn-outline-primary me-1"
+                  </TableCell>
+                  <TableCell>{station.capacityKwh} kW/h</TableCell>
+                  <TableCell>{station.totalSlots} bays</TableCell>
+                  <TableCell>
+                    <StatusChip
+                      label={station.isActive ? 'Active' : 'Inactive'}
+                      tone={station.isActive ? 'success' : 'neutral'}
+                    />
+                  </TableCell>
+                  <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<ScheduleIcon />}
                       onClick={() => openSlotManager(station)}
                       title="Manage booking time windows and battery slots"
                     >
-                      <i className="bi bi-clock-history me-1" />
                       Slots
-                    </button>
+                    </Button>
                     {isBackoffice && (
                       <>
-                        <button
-                          className="btn btn-sm btn-outline-secondary me-1"
-                          onClick={() => setEditingStation(station)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className={`btn btn-sm me-1 ${station.isActive ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                          onClick={() => toggleActive(station)}
-                        >
-                          {station.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleDeleteStation(station)}
-                        >
-                          Delete
-                        </button>
+                        <Tooltip title="Edit">
+                          <IconButton size="small" onClick={() => setEditingStation(station)} sx={{ ml: 1 }}>
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={station.isActive ? 'Deactivate' : 'Activate'}>
+                          <IconButton
+                            size="small"
+                            color={station.isActive ? 'warning' : 'success'}
+                            onClick={() => toggleActive(station)}
+                          >
+                            <PowerSettingsNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton size="small" color="error" onClick={() => handleDeleteStation(station)}>
+                            <DeleteOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-              {stations.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
-                    No microgrid nodes registered yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              {stations.length === 0 && <EmptyRow colSpan={7} text="No microgrid nodes registered yet." />}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
 
-      {/* Edit Station Modal */}
+      {/* Edit station dialog */}
       {editingStation && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Microgrid Node</h5>
-                <button type="button" className="btn-close" onClick={() => setEditingStation(null)} />
-              </div>
-              <form onSubmit={handleUpdateStation}>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Node Name</label>
-                    <input
-                      className="form-control"
-                      value={editingStation.name}
-                      onChange={(e) => setEditingStation({ ...editingStation, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Location</label>
-                    <input
-                      className="form-control"
-                      value={editingStation.location}
-                      onChange={(e) => setEditingStation({ ...editingStation, location: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">GPS position</label>
-                    <LocationPicker
-                      latitude={editingStation.latitude}
-                      longitude={editingStation.longitude}
-                      onChange={(coords) => setEditingStation((station) => ({ ...station, ...coords }))}
-                    />
-                  </div>
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Capacity (kW/h)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        className="form-control"
-                        value={editingStation.capacityKwh}
-                        onChange={(e) => setEditingStation({ ...editingStation, capacityKwh: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="col-6">
-                      <label className="form-label small text-muted">Battery Storage Slots</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        value={editingStation.totalSlots}
-                        onChange={(e) => setEditingStation({ ...editingStation, totalSlots: e.target.value })}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setEditingStation(null)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-semibold">
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          open
+          onClose={() => setEditingStation(null)}
+          maxWidth="sm"
+          fullWidth
+          slotProps={{ paper: { component: 'form', onSubmit: handleUpdateStation } }}
+        >
+          <DialogTitle>Edit Microgrid Node</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <TextField
+                label="Node Name"
+                value={editingStation.name}
+                onChange={(e) => setEditingStation({ ...editingStation, name: e.target.value })}
+                required
+                fullWidth
+              />
+              <TextField
+                label="Location"
+                value={editingStation.location}
+                onChange={(e) => setEditingStation({ ...editingStation, location: e.target.value })}
+                required
+                fullWidth
+              />
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                  GPS position
+                </Typography>
+                <LocationPicker
+                  latitude={editingStation.latitude}
+                  longitude={editingStation.longitude}
+                  onChange={(coords) => setEditingStation((station) => ({ ...station, ...coords }))}
+                />
+              </Box>
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Capacity (kW/h)"
+                  type="number"
+                  value={editingStation.capacityKwh}
+                  onChange={(e) => setEditingStation({ ...editingStation, capacityKwh: e.target.value })}
+                  required
+                  fullWidth
+                  slotProps={{ htmlInput: { step: 'any' } }}
+                />
+                <TextField
+                  label="Battery Storage Slots"
+                  type="number"
+                  value={editingStation.totalSlots}
+                  onChange={(e) => setEditingStation({ ...editingStation, totalSlots: e.target.value })}
+                  required
+                  fullWidth
+                />
+              </Stack>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button color="secondary" onClick={() => setEditingStation(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Save Changes
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
-      {/* Slot Management Modal / Panel */}
+      {/* Slot management dialog */}
       {selectedStationForSlots && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <div>
-                  <h5 className="modal-title mb-0">Battery Slot Schedules</h5>
-                  <small className="text-muted">
-                    {selectedStationForSlots.name} ({selectedStationForSlots.totalSlots} max physical bays)
-                  </small>
-                </div>
-                <button type="button" className="btn-close" onClick={() => setSelectedStationForSlots(null)} />
-              </div>
-              <div className="modal-body">
-                {slotError && <div className="alert alert-danger py-2 small">{slotError}</div>}
+        <Dialog open onClose={() => setSelectedStationForSlots(null)} maxWidth="md" fullWidth>
+          <DialogTitle sx={{ pr: 7 }}>
+            Battery Slot Schedules
+            <Typography variant="body2" color="text.secondary">
+              {selectedStationForSlots.name} ({selectedStationForSlots.totalSlots} max physical bays)
+            </Typography>
+            <IconButton
+              aria-label="Close"
+              onClick={() => setSelectedStationForSlots(null)}
+              sx={{ position: 'absolute', right: 12, top: 12 }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent dividers>
+            {slotError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {slotError}
+              </Alert>
+            )}
 
-                {/* Add or Edit Slot Form */}
-                <div className="card bg-light border-0 mb-4">
-                  <div className="card-body py-3">
-                    <h6 className="card-subtitle mb-2 text-muted fw-semibold">
-                      {editingSlotId ? 'Edit Time Window' : 'Open New Booking Window'}
-                    </h6>
-                    <form className="row g-2 align-items-end" onSubmit={handleSaveSlot}>
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small text-muted">Start Time</label>
-                        <input
-                          type="datetime-local"
-                          className="form-control form-control-sm"
-                          value={slotForm.startTime}
-                          onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-12 col-md-4">
-                        <label className="form-label small text-muted">End Time</label>
-                        <input
-                          type="datetime-local"
-                          className="form-control form-control-sm"
-                          value={slotForm.endTime}
-                          onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-6 col-md-2">
-                        <label className="form-label small text-muted">Available Bays</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max={selectedStationForSlots.totalSlots}
-                          className="form-control form-control-sm"
-                          value={slotForm.totalSlots}
-                          onChange={(e) => setSlotForm({ ...slotForm, totalSlots: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="col-6 col-md-2 d-flex gap-1">
-                        <button type="submit" className="btn btn-sm btn-warning fw-semibold flex-grow-1">
-                          {editingSlotId ? 'Update' : 'Open'}
-                        </button>
-                        {editingSlotId && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-light"
-                            onClick={() => {
-                              setEditingSlotId(null);
-                              setSlotForm({ ...emptySlotForm, totalSlots: selectedStationForSlots.totalSlots });
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </form>
-                  </div>
-                </div>
+            {/* Add or edit slot form */}
+            <Box component="form" onSubmit={handleSaveSlot} sx={{ p: 2, mb: 3, borderRadius: 3, bgcolor: '#F8FAFC' }}>
+              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 2 }}>
+                {editingSlotId ? 'Edit Time Window' : 'Open New Booking Window'}
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gap: 2,
+                  alignItems: 'center',
+                  gridTemplateColumns: { xs: '1fr', md: '2fr 2fr 1fr auto' },
+                }}
+              >
+                <TextField
+                  label="Start Time"
+                  type="datetime-local"
+                  size="small"
+                  value={slotForm.startTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, startTime: e.target.value })}
+                  required
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+                <TextField
+                  label="End Time"
+                  type="datetime-local"
+                  size="small"
+                  value={slotForm.endTime}
+                  onChange={(e) => setSlotForm({ ...slotForm, endTime: e.target.value })}
+                  required
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+                <TextField
+                  label="Available Bays"
+                  type="number"
+                  size="small"
+                  value={slotForm.totalSlots}
+                  onChange={(e) => setSlotForm({ ...slotForm, totalSlots: e.target.value })}
+                  required
+                  slotProps={{ htmlInput: { min: 1, max: selectedStationForSlots.totalSlots } }}
+                />
+                <Stack direction="row" spacing={1}>
+                  <Button type="submit" variant="contained">
+                    {editingSlotId ? 'Update' : 'Open'}
+                  </Button>
+                  {editingSlotId && (
+                    <Button color="secondary" onClick={cancelEditSlot}>
+                      Cancel
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+            </Box>
 
-                {/* Existing Slots Table */}
-                <h6 className="text-muted mb-2">Configured Slots</h6>
-                <div className="table-responsive">
-                  <table className="table table-sm table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Window Start</th>
-                        <th>Window End</th>
-                        <th>Bays Offered</th>
-                        <th>Live Available</th>
-                        <th>Status</th>
-                        <th className="text-end">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {slots.map((slot) => {
-                        const isPast = new Date(slot.endTime) < new Date();
-                        return (
-                          <tr key={slot.id} className={isPast ? 'text-muted' : ''}>
-                            <td>{new Date(slot.startTime).toLocaleString()}</td>
-                            <td>{new Date(slot.endTime).toLocaleString()}</td>
-                            <td>{slot.totalSlots} bays</td>
-                            <td>
-                              <span
-                                className={`badge ${
-                                  slot.availableSlots > 0 ? 'text-bg-success' : 'text-bg-danger'
-                                }`}
-                              >
-                                {slot.availableSlots} free
-                              </span>
-                            </td>
-                            <td>
-                              {isPast ? (
-                                <span className="badge text-bg-secondary">Expired</span>
-                              ) : (
-                                <span className="badge text-bg-info">Open</span>
-                              )}
-                            </td>
-                            <td className="text-end">
-                              <button
-                                className="btn btn-sm btn-link p-0 text-primary me-2"
-                                onClick={() => startEditSlot(slot)}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="btn btn-sm btn-link p-0 text-danger"
-                                onClick={() => handleDeleteSlot(slot.id)}
-                              >
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {slots.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="text-center text-muted py-3">
-                            No booking windows scheduled for this station.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setSelectedStationForSlots(null)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+            {/* Existing slots */}
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+              Configured Slots
+            </Typography>
+            <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Window Start</TableCell>
+                    <TableCell>Window End</TableCell>
+                    <TableCell>Bays Offered</TableCell>
+                    <TableCell>Live Available</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {slots.map((slot) => {
+                    const isPast = new Date(slot.endTime) < new Date();
+                    return (
+                      <TableRow key={slot.id} hover sx={isPast ? { '& td': { color: 'text.secondary' } } : undefined}>
+                        <TableCell>{new Date(slot.startTime).toLocaleString()}</TableCell>
+                        <TableCell>{new Date(slot.endTime).toLocaleString()}</TableCell>
+                        <TableCell>{slot.totalSlots} bays</TableCell>
+                        <TableCell>
+                          <StatusChip
+                            label={`${slot.availableSlots} free`}
+                            tone={slot.availableSlots > 0 ? 'success' : 'danger'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <StatusChip label={isPast ? 'Expired' : 'Open'} tone={isPast ? 'neutral' : 'info'} />
+                        </TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                          <Button size="small" onClick={() => startEditSlot(slot)}>
+                            Edit
+                          </Button>
+                          <Button size="small" color="error" onClick={() => handleDeleteSlot(slot.id)}>
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {slots.length === 0 && <EmptyRow colSpan={6} text="No booking windows scheduled for this station." />}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button variant="outlined" color="secondary" onClick={() => setSelectedStationForSlots(null)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
+
+      <ConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
     </MapsProvider>
   );
 }

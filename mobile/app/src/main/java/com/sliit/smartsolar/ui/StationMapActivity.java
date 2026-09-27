@@ -11,9 +11,11 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.DatabaseHelper;
 import com.sliit.smartsolar.network.ApiClient;
+import com.sliit.smartsolar.util.SystemBars;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -35,7 +37,10 @@ public class StationMapActivity extends AppCompatActivity implements OnMapReadyC
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_station_map);
+        SystemBars.apply(this);
 
+        ((MaterialToolbar) findViewById(R.id.appBar))
+                .setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         databaseHelper = new DatabaseHelper(this);
 
         SupportMapFragment fragment =

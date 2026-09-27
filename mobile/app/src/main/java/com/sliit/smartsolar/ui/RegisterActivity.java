@@ -6,6 +6,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.appbar.MaterialToolbar;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.network.ApiClient;
 import com.sliit.smartsolar.util.SystemBars;
@@ -35,6 +36,8 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
         SystemBars.apply(this);
 
+        ((MaterialToolbar) findViewById(R.id.appBar))
+                .setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         nicInput = findViewById(R.id.inputNic);
         nameInput = findViewById(R.id.inputFullName);
         emailInput = findViewById(R.id.inputEmail);

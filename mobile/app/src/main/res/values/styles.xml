@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget styles shared by every screen. Each one mirrors a component on the web
+  portal (web/src/theme.js), so the two apps look and behave alike.
+-->
+<resources>
+
+    <!-- Navy top bar, like the web portal's navigation. -->
+    <style name="Widget.SmartSolar.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="android:background">@color/navy</item>
+        <item name="android:minHeight">?attr/actionBarSize</item>
+        <item name="titleTextColor">@color/white</item>
+        <item name="subtitleTextColor">@color/navy_text</item>
+        <item name="navigationIcon">@drawable/ic_arrow_back</item>
+        <item name="navigationIconTint">@color/white</item>
+        <item name="navigationContentDescription">@string/back</item>
+    </style>
+
+    <!-- Outlined text field with the amber focus ring used by the web forms. -->
+    <style name="Widget.SmartSolar.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/input_stroke</item>
+        <item name="hintTextColor">@color/brand_strong</item>
+        <item name="boxBackgroundColor">@color/surface</item>
+        <item name="boxCornerRadiusTopStart">8dp</item>
+        <item name="boxCornerRadiusTopEnd">8dp</item>
+        <item name="boxCornerRadiusBottomStart">8dp</item>
+        <item name="boxCornerRadiusBottomEnd">8dp</item>
+    </style>
+
+    <!-- Dropdown field, the equivalent of the web's select boxes. -->
+    <style name="Widget.SmartSolar.TextInputLayout.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxStrokeColor">@color/input_stroke</item>
+        <item name="hintTextColor">@color/brand_strong</item>
+        <item name="boxBackgroundColor">@color/surface</item>
+        <item name="boxCornerRadiusTopStart">8dp</item>
+        <item name="boxCornerRadiusTopEnd">8dp</item>
+        <item name="boxCornerRadiusBottomStart">8dp</item>
+        <item name="boxCornerRadiusBottomEnd">8dp</item>
+    </style>
+
+    <!-- Secondary action: navy text with a slate border. -->
+    <style name="Widget.SmartSolar.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">@color/text_navy</item>
+        <item name="iconTint">@color/text_navy</item>
+        <item name="strokeColor">@color/outline</item>
+    </style>
+
+    <!-- Destructive action such as cancelling a booking. -->
+    <style name="Widget.SmartSolar.Button.Danger" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">@color/text_error</item>
+        <item name="iconTint">@color/text_error</item>
+        <item name="strokeColor">@color/error_border</item>
+    </style>
+
+    <!-- Link-style action in dark amber. -->
+    <style name="Widget.SmartSolar.Button.Text" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/text_brand_strong</item>
+        <item name="iconTint">@color/text_brand_strong</item>
+    </style>
+
+    <!-- Round icon-only button on the navy header, e.g. sign out. -->
+    <style name="Widget.SmartSolar.Button.HeaderIcon" parent="Widget.Material3.Button.IconButton">
+        <item name="iconTint">@color/white</item>
+        <item name="rippleColor">@color/navy_text</item>
+    </style>
+
+    <!-- White outlined card with 16dp corners, as on the web portal. -->
+    <style name="Widget.SmartSolar.Card" parent="Widget.Material3.CardView.Outlined">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="strokeColor">@color/divider</item>
+    </style>
+
+    <!-- Small coloured status label; the colours are set in code (see util/Tones). -->
+    <style name="Widget.SmartSolar.StatusChip" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/bg_chip</item>
+        <item name="android:paddingStart">10dp</item>
+        <item name="android:paddingEnd">10dp</item>
+        <item name="android:paddingTop">3dp</item>
+        <item name="android:paddingBottom">3dp</item>
+        <item name="android:textAppearance">?attr/textAppearanceLabelMedium</item>
+    </style>
+
+    <!-- Tinted square behind an icon, like the web dashboard's metric icons. -->
+    <style name="Widget.SmartSolar.IconBadge" parent="">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">36dp</item>
+        <item name="android:background">@drawable/bg_icon_badge</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <!-- Screen heading below the top bar, like the web page titles. -->
+    <style name="TextAppearance.SmartSolar.PageTitle" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textColor">@color/navy</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Card and section headings. -->
+    <style name="TextAppearance.SmartSolar.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/navy</item>
+    </style>
+
+    <!-- Large metric numbers on the home screens. -->
+    <style name="TextAppearance.SmartSolar.Metric" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textColor">@color/navy</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Secondary text. -->
+    <style name="TextAppearance.SmartSolar.Muted" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/text_muted</item>
+    </style>
+
+    <!-- Material dialogs with readable button colours. -->
+    <style name="ThemeOverlay.SmartSolar.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.SmartSolar.Button.Dialog</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.SmartSolar.Button.Dialog.Neutral</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Widget.SmartSolar.Button.Dialog.Neutral</item>
+    </style>
+
+    <style name="Widget.SmartSolar.Button.Dialog" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/text_brand_strong</item>
+    </style>
+
+    <style name="Widget.SmartSolar.Button.Dialog.Neutral">
+        <item name="android:textColor">@color/text_navy</item>
+    </style>
+</resources>

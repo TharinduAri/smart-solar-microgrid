@@ -308,3 +308,22 @@ The repository runs automated build verification in [.github/workflows/build-ver
    - Environment: `ubuntu-latest` with **Node.js 20**.
    - Installs clean dependencies (`npm --prefix web ci` with npm cache).
    - Builds production Vite bundle (`npm --prefix web run build`) to verify React JSX syntax, bundling, and CSS asset generation.
+---
+
+## 9. Shared UI Design (Web + Mobile)
+
+Both clients follow **Material Design 3** so they look and behave alike: the web portal uses **MUI (Material UI)** and the Android app uses Google's **Material Components**.
+
+| What | Web (`web/`) | Android (`mobile/`) |
+| :--- | :--- | :--- |
+| Colours (amber, navy, status tones) | `tokens` and `tones` in [src/theme.js](web/src/theme.js) | [res/values/colors.xml](mobile/app/src/main/res/values/colors.xml) |
+| Component styles | `createTheme` in [src/theme.js](web/src/theme.js) | [themes.xml](mobile/app/src/main/res/values/themes.xml) and [styles.xml](mobile/app/src/main/res/values/styles.xml) |
+| Icons | `@mui/icons-material` | `res/drawable/ic_*.xml`, made from the same MUI icon shapes |
+| Status labels | [StatusChip.jsx](web/src/components/StatusChip.jsx) | [util/Tones.java](mobile/app/src/main/java/com/sliit/smartsolar/util/Tones.java) |
+
+Keeping the two apps consistent:
+- Change a colour in **both** `theme.js` and `colors.xml`; they hold the same hex values.
+- Booking statuses always use the same tones: Pending = amber, Approved = green, Completed = blue, Cancelled = grey.
+- Primary actions are amber filled buttons with navy text, secondary actions are outlined, destructive actions are red.
+- To add an Android icon, copy the `d` path of the MUI icon from `web/node_modules/@mui/icons-material/<Name>.mjs` into a vector drawable shaped like the existing `ic_*.xml` files.
+

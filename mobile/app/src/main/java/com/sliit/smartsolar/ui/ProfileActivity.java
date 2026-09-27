@@ -4,9 +4,10 @@ import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.SessionManager;
 import com.sliit.smartsolar.network.ApiClient;
@@ -46,6 +47,8 @@ public class ProfileActivity extends AppCompatActivity {
         }
         userId = session.optString("userId");
 
+        ((MaterialToolbar) findViewById(R.id.appBar))
+                .setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         nicInput = findViewById(R.id.inputNic);
         nameInput = findViewById(R.id.inputFullName);
         emailInput = findViewById(R.id.inputEmail);
@@ -118,7 +121,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     /** Asks before sending the deactivation request. */
     private void confirmDeactivation() {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.request_deactivation)
                 .setMessage(R.string.deactivation_confirm)
                 .setPositiveButton(R.string.send_request, (dialog, which) -> requestDeactivation())

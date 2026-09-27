@@ -1,10 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.SmartSolar" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/solar_amber</item>
-        <item name="colorPrimaryDark">@color/solar_amber_dark</item>
-        <item name="colorSecondary">@color/grid_navy</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/grid_navy</item>
-        <item name="android:windowBackground">@color/surface</item>
+<!--
+  Material 3 theme built from the shared tokens in colors.xml, so every Material
+  component matches the web portal's MUI theme (web/src/theme.js).
+-->
+<resources>
+    <style name="Theme.SmartSolar" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">@color/brand</item>
+        <item name="colorOnPrimary">@color/navy</item>
+        <item name="colorPrimaryContainer">@color/brand_soft</item>
+        <item name="colorOnPrimaryContainer">@color/brand_deep</item>
+        <item name="colorPrimaryInverse">@color/brand</item>
+        <item name="colorSecondary">@color/navy</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/divider</item>
+        <item name="colorOnSecondaryContainer">@color/navy</item>
+        <item name="colorTertiary">@color/navy_light</item>
+        <item name="colorOnTertiary">@color/white</item>
+        <item name="colorTertiaryContainer">@color/subtle</item>
+        <item name="colorOnTertiaryContainer">@color/navy</item>
+        <item name="colorError">@color/error</item>
+        <item name="colorOnError">@color/white</item>
+        <item name="colorErrorContainer">@color/tone_danger_bg</item>
+        <item name="colorOnErrorContainer">@color/tone_danger_fg</item>
+        <item name="android:colorBackground">@color/page</item>
+        <item name="colorOnBackground">@color/navy</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/navy</item>
+        <item name="colorSurfaceVariant">@color/subtle</item>
+        <item name="colorOnSurfaceVariant">@color/text_muted</item>
+        <item name="colorSurfaceInverse">@color/navy</item>
+        <item name="colorOnSurfaceInverse">@color/subtle</item>
+        <item name="colorSurfaceBright">@color/surface</item>
+        <item name="colorSurfaceDim">@color/page</item>
+        <item name="colorSurfaceContainerLowest">@color/surface</item>
+        <item name="colorSurfaceContainerLow">@color/surface</item>
+        <item name="colorSurfaceContainer">@color/surface</item>
+        <item name="colorSurfaceContainerHigh">@color/surface</item>
+        <item name="colorSurfaceContainerHighest">@color/subtle</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorOutlineVariant">@color/divider</item>
+
+        <item name="android:windowBackground">@color/page</item>
+
+        <!-- Every screen starts with a navy bar, so the status bar is navy with light icons. -->
+        <item name="android:statusBarColor">@color/navy</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <item name="textInputStyle">@style/Widget.SmartSolar.TextInputLayout</item>
+        <item name="materialCardViewStyle">@style/Widget.SmartSolar.Card</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.SmartSolar.Dialog</item>
     </style>
 </resources>

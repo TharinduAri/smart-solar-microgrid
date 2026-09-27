@@ -1,6 +1,37 @@
 // Energy slot reservation management - search, create, update, approve and cancel bookings.
 import { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  InputAdornment,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { api } from '../api/client.js';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import EmptyRow from '../components/EmptyRow.jsx';
+import PageHeader from '../components/PageHeader.jsx';
+import StatusChip from '../components/StatusChip.jsx';
+import { tokens } from '../theme.js';
 
 const STATUSES = ['', 'Pending', 'Approved', 'Completed', 'Cancelled'];
 
@@ -11,12 +42,22 @@ const emptyCreateForm = {
   energyKwh: '',
 };
 
+// Shared props for dropdowns whose empty value means "all".
+const selectAllProps = { select: { displayEmpty: true }, inputLabel: { shrink: true } };
+
+// Label for a booking window, e.g. "24/09/2026 (09:00 - 12:00)".
+function slotWindow(slot) {
+  const time = { hour: '2-digit', minute: '2-digit' };
+  return `${new Date(slot.startTime).toLocaleDateString()} (${new Date(slot.startTime).toLocaleTimeString([], time)} - ${new Date(slot.endTime).toLocaleTimeString([], time)})`;
+}
+
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState([]);
   const [stations, setStations] = useState([]);
   const [filters, setFilters] = useState({ nic: '', status: '', stationId: '', upcoming: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [confirmRequest, setConfirmRequest] = useState(null);
 
   // Create Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -140,11 +181,19 @@ export default function ReservationsPage() {
     }
   }
 
+  // Asks before cancelling; the 12 hour notice rule is enforced by the API
+  function handleCancel(id) {
+    setConfirmRequest({
+      title: 'Cancel this reservation?',
+      message: "The battery slot will be released for someone else. Cancellations need at least 12 hours' notice.",
+      confirmLabel: 'Cancel reservation',
+      cancelLabel: 'Keep reservation',
+      onConfirm: () => cancel(id),
+    });
+  }
+
   // Cancels a booking; 12 hour notice rule enforced by API
   async function cancel(id) {
-    if (!window.confirm('Are you sure you want to cancel this reservation? (Requires at least 12 hours notice)')) {
-      return;
-    }
     setError('');
     setSuccess('');
     try {
@@ -156,373 +205,365 @@ export default function ReservationsPage() {
     }
   }
 
+  const updateSlotValue = updateSlots.some((slot) => slot.id === updateForm.slotId) ? updateForm.slotId : '';
+
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h4 mb-0">Energy Slot Reservations</h1>
-        <button className="btn btn-warning fw-semibold btn-sm" onClick={() => setShowCreateModal(true)}>
-          <i className="bi bi-plus-circle me-1" />
-          New Reservation
-        </button>
-      </div>
+      <PageHeader
+        title="Energy Slot Reservations"
+        subtitle="Search, book, approve and reschedule power trading slots"
+        actions={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowCreateModal(true)}>
+            New Reservation
+          </Button>
+        }
+      />
 
-      {error && <div className="alert alert-danger alert-dismissible fade show">{error}</div>}
-      {success && <div className="alert alert-success alert-dismissible fade show">{success}</div>}
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 2 }}>
+          {success}
+        </Alert>
+      )}
 
-      {/* Filter Card */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-2 align-items-end">
-            <div className="col-12 col-md-3">
-              <label className="form-label small text-muted">Prosumer NIC</label>
-              <input
-                className="form-control"
-                value={filters.nic}
-                onChange={(e) => setFilters({ ...filters, nic: e.target.value })}
-                placeholder="Search by NIC"
-              />
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label small text-muted">Microgrid Node</label>
-              <select
-                className="form-select"
-                value={filters.stationId}
-                onChange={(e) => setFilters({ ...filters, stationId: e.target.value })}
-              >
-                <option value="">All Stations</option>
-                {stations.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label small text-muted">Status</label>
-              <select
-                className="form-select"
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s || 'All statuses'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-12 col-md-3">
-              <label className="form-label small text-muted">Timeline</label>
-              <select
-                className="form-select"
-                value={filters.upcoming}
-                onChange={(e) => setFilters({ ...filters, upcoming: e.target.value })}
-              >
-                <option value="">All Bookings</option>
-                <option value="true">Upcoming Only</option>
-                <option value="false">Past History</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Filters */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
+            <TextField
+              label="Prosumer NIC"
+              placeholder="Search by NIC"
+              size="small"
+              value={filters.nic}
+              onChange={(e) => setFilters({ ...filters, nic: e.target.value })}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <TextField
+              select
+              label="Microgrid Node"
+              size="small"
+              value={filters.stationId}
+              onChange={(e) => setFilters({ ...filters, stationId: e.target.value })}
+              slotProps={selectAllProps}
+            >
+              <MenuItem value="">All Stations</MenuItem>
+              {stations.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Status"
+              size="small"
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              slotProps={selectAllProps}
+            >
+              {STATUSES.map((s) => (
+                <MenuItem key={s} value={s}>
+                  {s || 'All statuses'}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Timeline"
+              size="small"
+              value={filters.upcoming}
+              onChange={(e) => setFilters({ ...filters, upcoming: e.target.value })}
+              slotProps={selectAllProps}
+            >
+              <MenuItem value="">All Bookings</MenuItem>
+              <MenuItem value="true">Upcoming Only</MenuItem>
+              <MenuItem value="false">Past History</MenuItem>
+            </TextField>
+          </Box>
+        </CardContent>
+      </Card>
 
-      {/* Table */}
-      <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light">
-              <tr>
-                <th>Prosumer</th>
-                <th>Node</th>
-                <th>Reservation Time</th>
-                <th>Energy (kWh)</th>
-                <th>Status</th>
-                <th>QR Token</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+      {/* Reservations */}
+      <Card>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Prosumer</TableCell>
+                <TableCell>Node</TableCell>
+                <TableCell>Reservation Time</TableCell>
+                <TableCell>Energy (kWh)</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>QR Token</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {reservations.map((r) => {
                 const isActionable = r.status === 'Pending' || r.status === 'Approved';
                 return (
-                  <tr key={r.id}>
-                    <td>
-                      <div className="fw-semibold">{r.prosumerName}</div>
-                      <div className="small text-muted">{r.prosumerNic}</div>
-                    </td>
-                    <td>{r.stationName}</td>
-                    <td>{new Date(r.reservationTime).toLocaleString()}</td>
-                    <td>{r.energyKwh} kWh</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          r.status === 'Approved'
-                            ? 'text-bg-success'
-                            : r.status === 'Pending'
-                            ? 'text-bg-warning'
-                            : r.status === 'Completed'
-                            ? 'text-bg-info'
-                            : 'text-bg-secondary'
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td>
+                  <TableRow key={r.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {r.prosumerName}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {r.prosumerNic}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{r.stationName}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{new Date(r.reservationTime).toLocaleString()}</TableCell>
+                    <TableCell>{r.energyKwh} kWh</TableCell>
+                    <TableCell>
+                      <StatusChip label={r.status} />
+                    </TableCell>
+                    <TableCell>
                       {r.qrToken ? (
-                        <button
-                          className="btn btn-sm btn-outline-dark font-monospace py-0 px-2"
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="secondary"
+                          startIcon={<QrCode2Icon />}
                           onClick={() => setViewingQr(r)}
                           title="View QR Token"
+                          sx={{ fontFamily: tokens.mono }}
                         >
-                          <i className="bi bi-qr-code me-1" />
                           {r.qrToken.slice(0, 8)}...
-                        </button>
+                        </Button>
                       ) : (
-                        <span className="text-muted small">—</span>
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
                       )}
-                    </td>
-                    <td className="text-end">
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                       {r.status === 'Pending' && (
-                        <button className="btn btn-sm btn-warning me-1" onClick={() => approve(r.id)}>
+                        <Button size="small" variant="contained" onClick={() => approve(r.id)} sx={{ mr: 1 }}>
                           Approve
-                        </button>
+                        </Button>
                       )}
                       {isActionable && (
-                        <button
-                          className="btn btn-sm btn-outline-secondary me-1"
-                          onClick={() => openUpdateModal(r)}
-                          title="Reschedule or edit energy"
-                        >
+                        <Button size="small" onClick={() => openUpdateModal(r)} title="Reschedule or edit energy">
                           Edit
-                        </button>
+                        </Button>
                       )}
                       {isActionable && (
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => cancel(r.id)}>
+                        <Button size="small" color="error" onClick={() => handleCancel(r.id)}>
                           Cancel
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-              {reservations.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-center text-muted py-4">
-                    No reservations match the current filter.
-                  </td>
-                </tr>
+              {reservations.length === 0 && <EmptyRow colSpan={7} text="No reservations match the current filter." />}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      {/* Create reservation dialog */}
+      <Dialog
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { component: 'form', onSubmit: handleCreateSubmit } }}
+      >
+        <DialogTitle>Book Energy Trading Slot</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {modalError && <Alert severity="error">{modalError}</Alert>}
+            <TextField
+              label="Prosumer NIC"
+              placeholder="e.g. 198512345678"
+              value={createForm.prosumerNic}
+              onChange={(e) => setCreateForm({ ...createForm, prosumerNic: e.target.value })}
+              helperText="Account must be active in the system."
+              required
+              fullWidth
+            />
+            <TextField
+              select
+              label="Microgrid Node"
+              value={createForm.stationId}
+              onChange={(e) => handleCreateStationChange(e.target.value)}
+              required
+              fullWidth
+            >
+              {stations.map((s) => (
+                <MenuItem key={s.id} value={s.id}>
+                  {s.name} ({s.location})
+                </MenuItem>
+              ))}
+            </TextField>
+            <Box>
+              <TextField
+                select
+                label="Booking Time Window (Within 7 Days)"
+                value={createForm.slotId}
+                onChange={(e) => setCreateForm({ ...createForm, slotId: e.target.value })}
+                disabled={!createForm.stationId}
+                helperText={createForm.stationId ? undefined : 'Choose a station first'}
+                required
+                fullWidth
+              >
+                {createSlots.map((slot) => (
+                  <MenuItem key={slot.id} value={slot.id}>
+                    {slotWindow(slot)} — {slot.availableSlots} free bays
+                  </MenuItem>
+                ))}
+              </TextField>
+              {createForm.stationId && createSlots.length === 0 && (
+                <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5, ml: 1.75 }}>
+                  No open slots available for this station.
+                </Typography>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </Box>
+            <TextField
+              label="Energy to Trade (kWh)"
+              type="number"
+              placeholder="e.g. 15.0"
+              value={createForm.energyKwh}
+              onChange={(e) => setCreateForm({ ...createForm, energyKwh: e.target.value })}
+              required
+              fullWidth
+              slotProps={{ htmlInput: { step: 0.1, min: 0.1 } }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button color="secondary" onClick={() => setShowCreateModal(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained">
+            Submit Booking
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Create Reservation Modal */}
-      {showCreateModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Book Energy Trading Slot</h5>
-                <button type="button" className="btn-close" onClick={() => setShowCreateModal(false)} />
-              </div>
-              <form onSubmit={handleCreateSubmit}>
-                <div className="modal-body">
-                  {modalError && <div className="alert alert-danger py-2 small">{modalError}</div>}
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Prosumer NIC</label>
-                    <input
-                      className="form-control"
-                      placeholder="e.g. 198512345678"
-                      value={createForm.prosumerNic}
-                      onChange={(e) => setCreateForm({ ...createForm, prosumerNic: e.target.value })}
-                      required
-                    />
-                    <div className="form-text small">Account must be active in the system.</div>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Microgrid Node</label>
-                    <select
-                      className="form-select"
-                      value={createForm.stationId}
-                      onChange={(e) => handleCreateStationChange(e.target.value)}
-                      required
-                    >
-                      <option value="">Select a microgrid station...</option>
-                      {stations.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} ({s.location})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Booking Time Window (Within 7 Days)</label>
-                    <select
-                      className="form-select"
-                      value={createForm.slotId}
-                      onChange={(e) => setCreateForm({ ...createForm, slotId: e.target.value })}
-                      disabled={!createForm.stationId}
-                      required
-                    >
-                      <option value="">
-                        {createForm.stationId ? 'Select available slot...' : 'Choose a station first'}
-                      </option>
-                      {createSlots.map((slot) => (
-                        <option key={slot.id} value={slot.id}>
-                          {new Date(slot.startTime).toLocaleDateString()} (
-                          {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                          {new Date(slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) —{' '}
-                          {slot.availableSlots} free bays
-                        </option>
-                      ))}
-                    </select>
-                    {createForm.stationId && createSlots.length === 0 && (
-                      <div className="form-text text-danger small">No open slots available for this station.</div>
-                    )}
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Energy to Trade (kWh)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      placeholder="e.g. 15.0"
-                      className="form-control"
-                      value={createForm.energyKwh}
-                      onChange={(e) => setCreateForm({ ...createForm, energyKwh: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setShowCreateModal(false)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-semibold">
-                    Submit Booking
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Update / Reschedule Reservation Modal */}
+      {/* Update / reschedule dialog */}
       {editingReservation && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content border-0 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title">Reschedule / Edit Reservation</h5>
-                <button type="button" className="btn-close" onClick={() => setEditingReservation(null)} />
-              </div>
-              <form onSubmit={handleUpdateSubmit}>
-                <div className="modal-body">
-                  {modalError && <div className="alert alert-danger py-2 small">{modalError}</div>}
-                  <div className="alert alert-info py-2 small">
-                    <i className="bi bi-info-circle me-1" />
-                    Updates require at least 12 hours notice prior to the scheduled window.
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Prosumer</label>
-                    <input
-                      className="form-control"
-                      value={`${editingReservation.prosumerName} (${editingReservation.prosumerNic})`}
-                      disabled
-                    />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Microgrid Node</label>
-                    <input className="form-control" value={editingReservation.stationName} disabled />
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Time Slot Window</label>
-                    <select
-                      className="form-select"
-                      value={updateForm.slotId}
-                      onChange={(e) => setUpdateForm({ ...updateForm, slotId: e.target.value })}
-                      required
-                    >
-                      {updateSlots.map((slot) => (
-                        <option key={slot.id} value={slot.id}>
-                          {new Date(slot.startTime).toLocaleDateString()} (
-                          {new Date(slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} -{' '}
-                          {new Date(slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) —{' '}
-                          {slot.id === editingReservation.slotId ? 'Current slot' : `${slot.availableSlots} free bays`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label small text-muted">Energy (kWh)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      className="form-control"
-                      value={updateForm.energyKwh}
-                      onChange={(e) => setUpdateForm({ ...updateForm, energyKwh: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-light" onClick={() => setEditingReservation(null)}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn btn-warning fw-semibold">
-                    Save Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          open
+          onClose={() => setEditingReservation(null)}
+          maxWidth="sm"
+          fullWidth
+          slotProps={{ paper: { component: 'form', onSubmit: handleUpdateSubmit } }}
+        >
+          <DialogTitle>Reschedule / Edit Reservation</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              {modalError && <Alert severity="error">{modalError}</Alert>}
+              <Alert severity="info" icon={<InfoOutlinedIcon fontSize="inherit" />}>
+                Updates require at least 12 hours notice prior to the scheduled window.
+              </Alert>
+              <TextField
+                label="Prosumer"
+                value={`${editingReservation.prosumerName} (${editingReservation.prosumerNic})`}
+                disabled
+                fullWidth
+              />
+              <TextField label="Microgrid Node" value={editingReservation.stationName} disabled fullWidth />
+              <TextField
+                select
+                label="Time Slot Window"
+                value={updateSlotValue}
+                onChange={(e) => setUpdateForm({ ...updateForm, slotId: e.target.value })}
+                required
+                fullWidth
+              >
+                {updateSlots.map((slot) => (
+                  <MenuItem key={slot.id} value={slot.id}>
+                    {slotWindow(slot)} —{' '}
+                    {slot.id === editingReservation.slotId ? 'Current slot' : `${slot.availableSlots} free bays`}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Energy (kWh)"
+                type="number"
+                value={updateForm.energyKwh}
+                onChange={(e) => setUpdateForm({ ...updateForm, energyKwh: e.target.value })}
+                required
+                fullWidth
+                slotProps={{ htmlInput: { step: 0.1, min: 0.1 } }}
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button color="secondary" onClick={() => setEditingReservation(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained">
+              Save Changes
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
-      {/* QR Token Modal */}
+      {/* QR token dialog */}
       {viewingQr && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-sm">
-            <div className="modal-content border-0 shadow text-center">
-              <div className="modal-header">
-                <h5 className="modal-title w-100">Transaction Token</h5>
-                <button type="button" className="btn-close" onClick={() => setViewingQr(null)} />
-              </div>
-              <div className="modal-body py-4">
-                <div className="p-3 bg-light rounded d-inline-block mb-3 border">
-                  <i className="bi bi-qr-code display-4 text-dark" />
-                </div>
-                <h6 className="fw-semibold mb-1">{viewingQr.prosumerName}</h6>
-                <div className="text-muted small mb-3">{viewingQr.stationName}</div>
-                <div className="alert alert-secondary font-monospace small mb-0 select-all">
-                  {viewingQr.qrToken}
-                </div>
-                <div className="text-muted small mt-2">
-                  Scanned by Grid Operator on-site to verify and complete energy transfer.
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary btn-sm w-100" onClick={() => setViewingQr(null)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Dialog open onClose={() => setViewingQr(null)} maxWidth="xs" fullWidth>
+          <DialogTitle sx={{ textAlign: 'center' }}>Transaction Token</DialogTitle>
+          <DialogContent sx={{ textAlign: 'center' }}>
+            <Box
+              sx={{
+                width: 88,
+                height: 88,
+                mx: 'auto',
+                mb: 2,
+                borderRadius: 4,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: tokens.brandSoft,
+                color: tokens.navy,
+              }}
+            >
+              <QrCode2Icon sx={{ fontSize: 56 }} />
+            </Box>
+            <Typography variant="subtitle1">{viewingQr.prosumerName}</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {viewingQr.stationName}
+            </Typography>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: '#F1F5F9',
+                fontFamily: tokens.mono,
+                fontSize: 13,
+                wordBreak: 'break-all',
+                userSelect: 'all',
+              }}
+            >
+              {viewingQr.qrToken}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+              Scanned by Grid Operator on-site to verify and complete energy transfer.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button fullWidth variant="outlined" color="secondary" onClick={() => setViewingQr(null)}>
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
+
+      <ConfirmDialog request={confirmRequest} onClose={() => setConfirmRequest(null)} />
     </>
   );
 }

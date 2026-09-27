@@ -354,7 +354,7 @@ if (-not $NoBackend) {
     else {
         Say "    starting it in a new window..."
         # One quoted string, so the space in the folder path does not split the command.
-        $launch = "-NoExit -Command ""Set-Location -LiteralPath '$repoDir\backend'; dotnet run --project SmartSolar.Api --urls http://localhost:5205"""
+        $launch = "-NoExit -Command ""Set-Location -LiteralPath '$repoDir\backend'; dotnet run --project SmartSolar.Api --urls http://0.0.0.0:5205"""
         Start-Process powershell -ArgumentList $launch
         for ($i = 0; $i -lt 60; $i++) {
             Start-Sleep -Seconds 2
@@ -384,6 +384,9 @@ Ok "build finished"
 Step "Installing on the device"
 & $adb install -r (Join-Path $mobileDir "app\build\outputs\apk\debug\app-debug.apk")
 if ($LASTEXITCODE -ne 0) { Fail "Install failed." }
+
+# Re-assert reverse tunnel so it is guaranteed active when the app process spawns
+& $adb reverse tcp:5205 tcp:5205 | Out-Null
 
 Step "Starting Smart Solar"
 # Start-Process keeps adb's progress text from being reported as a PowerShell error.

@@ -14,8 +14,8 @@ layers that talk to the service over REST only.
 | Folder | Contents |
 | --- | --- |
 | `backend/` | `SmartSolar.Api` — C# ASP.NET Core Web API (.NET 9), MongoDB, JWT auth, hosted on IIS |
-| `web/` | React 18 + Vite + Bootstrap 5 back-office client (Backoffice & Grid Operator) |
-| `mobile/` | Pure native Android app (Java, SQLite, Google Maps, ZXing QR) |
+| `web/` | React 18 + Vite + Material UI (MUI) back-office client (Backoffice & Grid Operator) |
+| `mobile/` | Pure native Android app (Java, Material Components, SQLite, Google Maps, ZXing QR) |
 
 ---
 
@@ -24,7 +24,7 @@ layers that talk to the service over REST only.
 ```
   Android (Java + SQLite)  ──REST──┐
                                    ├──►  C# Web API on IIS  ──►  MongoDB
-  React web app (Bootstrap 5) ─────┘        (all business logic)
+  React web app (Material UI) ─────┘        (all business logic)
 ```
 
 Neither client touches MongoDB. The Android app keeps a local SQLite database only for

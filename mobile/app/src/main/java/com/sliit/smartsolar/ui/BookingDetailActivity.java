@@ -7,15 +7,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.sliit.smartsolar.R;
 import com.sliit.smartsolar.data.SessionManager;
 import com.sliit.smartsolar.network.ApiClient;
 import com.sliit.smartsolar.util.Format;
 import com.sliit.smartsolar.util.QrCodeGenerator;
 import com.sliit.smartsolar.util.SystemBars;
+import com.sliit.smartsolar.util.Tones;
 
 import org.json.JSONObject;
 
@@ -50,6 +52,8 @@ public class BookingDetailActivity extends AppCompatActivity {
         isOperator = !"Prosumer".equals(session.optString("role"));
         reservationId = getIntent().getStringExtra(EXTRA_ID);
 
+        ((MaterialToolbar) findViewById(R.id.appBar))
+                .setNavigationOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
         findViewById(R.id.buttonChange).setOnClickListener(v -> openChangeForm());
         findViewById(R.id.buttonCancel).setOnClickListener(v -> confirmCancel());
         findViewById(R.id.buttonApprove).setOnClickListener(v -> approve());
@@ -83,13 +87,12 @@ public class BookingDetailActivity extends AppCompatActivity {
         boolean open = "Pending".equals(status) || "Approved".equals(status);
 
         ((TextView) findViewById(R.id.textStation)).setText(r.optString("stationName"));
-        ((TextView) findViewById(R.id.textStatus)).setText(status);
-        ((TextView) findViewById(R.id.textDetails)).setText(getString(R.string.booking_details,
-                r.optString("prosumerName"),
-                r.optString("prosumerNic"),
-                Format.dateTime(r.optString("reservationTime")),
-                r.optDouble("energyKwh"),
-                r.optString("id")));
+        Tones.statusLabel(findViewById(R.id.textStatus), status);
+        ((TextView) findViewById(R.id.textProsumer)).setText(
+                getString(R.string.prosumer_value, r.optString("prosumerName"), r.optString("prosumerNic")));
+        ((TextView) findViewById(R.id.textTime)).setText(Format.dateTime(r.optString("reservationTime")));
+        ((TextView) findViewById(R.id.textEnergy)).setText(Format.energy(r.optDouble("energyKwh")));
+        ((TextView) findViewById(R.id.textReference)).setText(r.optString("id"));
 
         findViewById(R.id.buttonChange).setVisibility(open ? View.VISIBLE : View.GONE);
         findViewById(R.id.buttonCancel).setVisibility(open ? View.VISIBLE : View.GONE);
@@ -100,8 +103,7 @@ public class BookingDetailActivity extends AppCompatActivity {
         ImageView qrImage = findViewById(R.id.imageQr);
         String token = r.isNull("qrToken") ? "" : r.optString("qrToken");
         boolean showQr = !isOperator && "Approved".equals(status) && !token.isEmpty();
-        qrImage.setVisibility(showQr ? View.VISIBLE : View.GONE);
-        findViewById(R.id.textQrHint).setVisibility(showQr ? View.VISIBLE : View.GONE);
+        findViewById(R.id.cardQr).setVisibility(showQr ? View.VISIBLE : View.GONE);
         if (showQr) {
             try {
                 qrImage.setImageBitmap(QrCodeGenerator.createTransactionQr(r.optString("id"), token));
@@ -128,7 +130,7 @@ public class BookingDetailActivity extends AppCompatActivity {
 
     /** Asks before cancelling, then cancels through the API and shows the summary. */
     private void confirmCancel() {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.cancel_booking_title)
                 .setMessage(R.string.cancel_booking_message)
                 .setPositiveButton(R.string.cancel_booking, (dialog, which) -> cancel())
