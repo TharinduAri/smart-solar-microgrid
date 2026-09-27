@@ -36,7 +36,8 @@ To start the entire system in one command with automatic readiness health-checks
 ```powershell
 .\start-all.ps1
 ```
-*(Or without mobile: `.\start-all.ps1 -NoMobile`)*
+*(Or without mobile: `.\start-all.ps1 -NoMobile`)*  
+*(To re-publish latest backend changes into IIS: `.\start-all.ps1 -Publish`)*
 
 ---
 
@@ -100,17 +101,92 @@ net start MongoDB
   dotnet user-secrets set "MongoDbSettings:ConnectionString" "mongodb+srv://user:pass@cluster.mongodb.net/..." --project SmartSolar.Api
   ```
 
-#### Publishing to Windows IIS (Production)
+#### Windows IIS Hosting & Deployment (Production)
 
-1. Install **ASP.NET Core 9.0 Hosting Bundle** on Windows.
-2. Publish release binaries:
+The backend API is configured to be hosted as a production Windows service using **Internet Information Services (IIS)** via the in-process ASP.NET Core Module (`AspNetCoreModuleV2`).
+
+##### 1. Prerequisites (One-Time Setup)
+
+1. **Enable IIS in Windows**:
+   - Press `Win + R`, type `optionalfeatures`, and press Enter.
+   - Check **Internet Information Services**.
+   - Expand **World Wide Web Services** ➔ **Application Development Features** and ensure **WebSocket Protocol** is checked.
+   - Click **OK** to install.
+2. **Install the .NET 9.0 Hosting Bundle**:
+   - Download and install the [ASP.NET Core 9.0 Hosting Bundle](https://aka.ms/dotnet/9.0/dotnet-hosting-win.exe).
+   - This installs the `AspNetCoreModuleV2` native module into IIS and the production runtime.
+   - Open PowerShell as Administrator and restart IIS to register the module:
+     ```powershell
+     iisreset
+     ```
+
+##### 2. Publishing the Application
+
+Compile and publish release binaries to the designated IIS folder:
+```powershell
+dotnet publish backend/SmartSolar.Api -c Release -o C:\inetpub\SmartSolarApi
+```
+*(Alternatively, pass `-Publish` when running `.\start-all.ps1 -Publish`)*.
+
+##### 3. Configuring the Website in IIS Manager
+
+1. Open **IIS Manager** (`inetmgr`).
+2. In the left panel, expand your server node ➔ right-click **Sites** ➔ **Add Website...**:
+   - **Site name**: `SmartSolarApi`
+   - **Physical path**: `C:\inetpub\SmartSolarApi`
+   - **Port**: `5205` *(Matches the port expected by the React web portal and mobile client)*
+   - Click **OK**.
+3. In the left panel, click **Application Pools**:
+   - Double-click **`SmartSolarApi`**.
+   - Change **.NET CLR Version** to **"No Managed Code"** *(Modern .NET 9 manages its own runtime engine; this prevents IIS from attempting to load legacy .NET CLR)*.
+   - Click **OK**.
+4. Grant folder access for the IIS application pool identity:
    ```powershell
-   dotnet publish backend/SmartSolar.Api -c Release -o C:\inetpub\SmartSolarApi
+   icacls "C:\inetpub\SmartSolarApi" /grant "IIS AppPool\SmartSolarApi:(OI)(CI)RX" /T
    ```
-3. Open **IIS Manager** (`inetmgr`):
-   - Add a new Website pointing to `C:\inetpub\SmartSolarApi`.
-   - Set the Application Pool **.NET CLR Version** to **"No Managed Code"**.
-   - [web.config](backend/SmartSolar.Api/web.config) handles in-process module binding automatically.
+
+##### 4. How to Manage and Stop the IIS Service
+
+###### Stopping the API:
+- **Via IIS Manager (GUI)**:
+  - In `inetmgr`, select `SmartSolarApi` in the left panel under **Sites**.
+  - In the right-hand **Actions** panel, click **Stop** (under "Manage Website").
+- **Via Command Line (PowerShell / Admin)**:
+  ```powershell
+  # Stop only the SmartSolarApi site (frees port 5205):
+  %windir%\system32\inetsrv\appcmd.exe stop site "SmartSolarApi"
+
+  # Or using PowerShell WebAdministration module:
+  Stop-WebSite -Name "SmartSolarApi"
+  ```
+- **To stop the entire IIS web server**:
+  ```powershell
+  net stop w3svc
+  # or:
+  iisreset /stop
+  ```
+
+###### Starting or Restarting the API:
+- **Via IIS Manager (GUI)**:
+  - Select `SmartSolarApi` ➔ click **Start** or **Restart** in the right-hand Actions panel.
+- **Via Command Line**:
+  ```powershell
+  %windir%\system32\inetsrv\appcmd.exe start site "SmartSolarApi"
+  # or:
+  Start-WebSite -Name "SmartSolarApi"
+  ```
+
+##### 5. Deploying Code Updates to IIS
+
+Whenever you modify C# source files, update the live IIS application by re-publishing:
+```powershell
+.\start-all.ps1 -Publish
+```
+or manually:
+```powershell
+dotnet publish backend/SmartSolar.Api -c Release -o C:\inetpub\SmartSolarApi
+```
+The ASP.NET Core module automatically detects updated binaries in `C:\inetpub\SmartSolarApi` and recycles the worker process to serve the new code seamlessly.
 
 ---
 
