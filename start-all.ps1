@@ -5,16 +5,18 @@
     Description : Complete All-In-One Orchestration Script.
                   1. Prepares environment and config files (.env, local.properties)
                   2. Starts MongoDB (Docker or native service) and waits for port 27017
-                  3. Starts the .NET 9 Web API in a titled window and waits for port 5205
+                  3. Verifies and warms up the .NET 9 Web API on Windows IIS (port 5205)
                   4. Starts the React Web Portal in a titled window (port 5173)
                   5. Configures ADB reverse tunnel, builds, and launches the Android app on your phone
     Usage       : .\start-all.ps1
                   .\start-all.ps1 -NoMobile   (starts only MongoDB, Web API, and Web Portal)
+                  .\start-all.ps1 -Publish    (re-publishes backend to IIS before starting)
     -----------------------------------------------------------------------------
 #>
 
 param(
-    [switch]$NoMobile
+    [switch]$NoMobile,
+    [switch]$Publish
 )
 
 $ErrorActionPreference = "Continue"
@@ -146,33 +148,47 @@ if ($mongoCheck.TcpTestSucceeded) {
 }
 
 # =============================================================================
-# 3. Central Web API (Port 5205)
+# 3. Central Web API on Windows IIS (Port 5205)
 # =============================================================================
-Step "3. Checking Central Web API (Port 5205)"
+Step "3. Checking Central Web API on Windows IIS (Port 5205)"
 
+$iisFolder = "C:\inetpub\SmartSolarApi"
+
+# Optional re-publish if -Publish switch is passed
+if ($Publish) {
+    Write-Host "    -Publish requested: building and publishing to $iisFolder..." -ForegroundColor Gray
+    dotnet publish (Join-Path $rootDir "backend\SmartSolar.Api") -c Release -o $iisFolder --nologo -v q
+    Ok "Backend published to $iisFolder"
+}
+
+# Check if port 5205 is currently listening
 $apiListening = Get-NetTCPConnection -LocalPort 5205 -State Listen -ErrorAction SilentlyContinue
-if ($apiListening) {
-    Ok "Web API is already running on http://localhost:5205"
-} else {
-    Write-Host "    starting Web API in a new window..." -ForegroundColor Gray
-    $apiLaunch = "-NoExit -Command ""Set-Location -LiteralPath '$rootDir\backend'; `$host.UI.RawUI.WindowTitle = 'Smart Solar - Web API (Port 5205)'; dotnet run --project SmartSolar.Api --urls http://0.0.0.0:5205"""
-    Start-Process powershell -ArgumentList $apiLaunch
+if (-not $apiListening) {
+    Write-Host "    port 5205 not active; attempting to start IIS site 'SmartSolarApi'..." -ForegroundColor Gray
+    $appcmd = "$env:windir\system32\inetsrv\appcmd.exe"
+    if (Test-Path $appcmd) {
+        & $appcmd start site "SmartSolarApi" 2>$null | Out-Null
+    }
 
-    # Readiness polling: wait up to 30 seconds for ASP.NET Core Kestrel to bind
-    $apiReady = $false
-    for ($i = 0; $i -lt 30; $i++) {
+    # Polling up to 10 seconds for IIS site to bind
+    for ($i = 0; $i -lt 10; $i++) {
         Start-Sleep -Seconds 1
-        if (Get-NetTCPConnection -LocalPort 5205 -State Listen -ErrorAction SilentlyContinue) {
-            $apiReady = $true
-            break
-        }
+        $apiListening = Get-NetTCPConnection -LocalPort 5205 -State Listen -ErrorAction SilentlyContinue
+        if ($apiListening) { break }
     }
+}
 
-    if ($apiReady) {
-        Ok "Web API is up: http://localhost:5205/swagger"
+if ($apiListening) {
+    Write-Host "    warming up IIS application pool..." -ForegroundColor Gray
+    $probe = Invoke-WebRequest -Uri "http://localhost:5205/" -UseBasicParsing -TimeoutSec 15 -ErrorAction SilentlyContinue
+    if ($probe -and $probe.StatusCode -eq 200) {
+        Ok "IIS Web API is healthy and live: http://localhost:5205/swagger"
     } else {
-        Warn "Web API did not bind within 30s. Check the opened Web API window for errors."
+        Ok "Web API is listening on port 5205: http://localhost:5205/swagger"
     }
+} else {
+    Warn "IIS site 'SmartSolarApi' is not listening on port 5205."
+    Warn "Ensure the site is created and started in IIS Manager (inetmgr), pointing to $iisFolder"
 }
 
 # =============================================================================
@@ -210,7 +226,7 @@ if ($webListening) {
 # =============================================================================
 if ($NoMobile) {
     Header "Services Live & Ready (No Mobile Requested)"
-    Write-Host "  Web API Swagger : http://localhost:5205/swagger" -ForegroundColor Green
+    Write-Host "  Web API Swagger : http://localhost:5205/swagger (IIS)" -ForegroundColor Green
     Write-Host "  Web Portal UI   : http://localhost:5173" -ForegroundColor Green
     Write-Host "`nSign in as Backoffice: admin@smartsolar.lk / Admin@123`n"
 } else {
