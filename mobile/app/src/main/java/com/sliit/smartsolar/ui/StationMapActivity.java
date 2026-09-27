@@ -1,15 +1,20 @@
 package com.sliit.smartsolar.ui;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.sliit.smartsolar.R;
@@ -79,12 +84,17 @@ public class StationMapActivity extends AppCompatActivity implements OnMapReadyC
         });
     }
 
-    /** Adds one marker per node and centres the camera on the first one. */
+    /** Adds one amber marker per node and frames the camera so every node is in view. */
     private void drawMarkers(JSONArray stations) {
         if (map == null) {
             return;
         }
         map.clear();
+
+        BitmapDescriptor pin = brandPin();
+        LatLngBounds.Builder bounds = new LatLngBounds.Builder();
+        LatLng first = null;
+        int count = 0;
 
         for (int i = 0; i < stations.length(); i++) {
             JSONObject station = stations.optJSONObject(i);
@@ -94,12 +104,31 @@ public class StationMapActivity extends AppCompatActivity implements OnMapReadyC
             LatLng position = new LatLng(station.optDouble("latitude"), station.optDouble("longitude"));
             map.addMarker(new MarkerOptions()
                     .position(position)
+                    .icon(pin)
                     .title(station.optString("name"))
                     .snippet(station.optString("location") + " - " + station.optDouble("capacityKwh") + " kW/h"));
 
-            if (i == 0) {
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(position, 11f));
+            bounds.include(position);
+            if (first == null) {
+                first = position;
             }
+            count++;
         }
+
+        if (count == 1) {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(first, 12f));
+        } else if (count > 1) {
+            int padding = Math.round(64 * getResources().getDisplayMetrics().density);
+            LatLngBounds area = bounds.build();
+            // Bounds need the map's size, so wait until it has been laid out.
+            map.setOnMapLoadedCallback(() -> map.moveCamera(CameraUpdateFactory.newLatLngBounds(area, padding)));
+        }
+    }
+
+    /** Default Google pin tinted with the app's solar amber (R.color.brand). */
+    private BitmapDescriptor brandPin() {
+        float[] hsv = new float[3];
+        Color.colorToHSV(ContextCompat.getColor(this, R.color.brand), hsv);
+        return BitmapDescriptorFactory.defaultMarker(hsv[0]);
     }
 }

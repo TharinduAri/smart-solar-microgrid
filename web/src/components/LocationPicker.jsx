@@ -3,15 +3,33 @@
 // clicks (or drags the pin) to choose the spot, then confirms it. The latitude and
 // longitude fields stay editable so the page still works without a Maps API key.
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import {
   AdvancedMarker,
   APILoadingStatus,
   APIProvider,
   Map as GoogleMap,
+  Pin,
   useApiLoadingStatus,
   useMap,
 } from '@vis.gl/react-google-maps';
+import { tokens } from '../theme.js';
 
 const MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 // Advanced markers need a map id; Google's DEMO_MAP_ID is fine for development.
@@ -41,6 +59,11 @@ function toPosition(latitude, longitude) {
 // Six decimal places is roughly 10 cm - more than enough for a grid hub.
 const round = (value) => Number(value.toFixed(6));
 
+// Map pin in the app's solar amber, matching the Android node map.
+function BrandPin() {
+  return <Pin background={tokens.brand} borderColor={tokens.brandStrong} glyphColor={tokens.navy} />;
+}
+
 // Pans the map to a position chosen outside it (typed in, or from the browser location).
 function FollowPosition({ position }) {
   const map = useMap();
@@ -59,10 +82,10 @@ function LoadError() {
   const status = useApiLoadingStatus();
   if (status !== APILoadingStatus.FAILED && status !== APILoadingStatus.AUTH_FAILURE) return null;
   return (
-    <div className="alert alert-warning py-2 small mb-2">
+    <Alert severity="warning" sx={{ m: 2 }}>
       Google Maps could not be loaded. Check VITE_GOOGLE_MAPS_API_KEY and that the Maps JavaScript API is
       enabled for it. You can still type the coordinates.
-    </div>
+    </Alert>
   );
 }
 
@@ -82,11 +105,29 @@ function locateWithBrowser(onFound, onError) {
 // Non-interactive thumbnail of the chosen spot; clicking it opens the large picker.
 function MapPreview({ position, onOpen }) {
   return (
-    <button
+    <Box
+      component="button"
       type="button"
-      className="ss-map-preview"
       onClick={onOpen}
       aria-label="Open the map to choose the location"
+      sx={{
+        position: 'relative',
+        display: 'block',
+        width: '100%',
+        height: 140,
+        p: 0,
+        border: `1px solid ${tokens.outline}`,
+        borderRadius: 2,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        bgcolor: tokens.divider,
+        transition: 'border-color 120ms, box-shadow 120ms',
+        '&:hover, &:focus-visible': {
+          borderColor: tokens.brandStrong,
+          boxShadow: `0 0 0 3px ${tokens.brandSoft}`,
+          outline: 'none',
+        },
+      }}
     >
       <GoogleMap
         mapId={MAP_ID}
@@ -97,13 +138,35 @@ function MapPreview({ position, onOpen }) {
         keyboardShortcuts={false}
         clickableIcons={false}
       >
-        {position && <AdvancedMarker position={position} />}
+        {position && (
+          <AdvancedMarker position={position}>
+            <BrandPin />
+          </AdvancedMarker>
+        )}
       </GoogleMap>
-      <span className="ss-map-preview-label">
-        <i className="bi bi-arrows-fullscreen me-1" />
+      <Box
+        component="span"
+        sx={{
+          position: 'absolute',
+          right: 8,
+          bottom: 8,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.5,
+          px: 1.25,
+          py: 0.5,
+          borderRadius: 999,
+          bgcolor: 'rgba(15, 23, 42, 0.85)',
+          color: '#fff',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          pointerEvents: 'none',
+        }}
+      >
+        <OpenInFullIcon sx={{ fontSize: 14 }} />
         {position ? 'Change on map' : 'Choose on map'}
-      </span>
-    </button>
+      </Box>
+    </Box>
   );
 }
 
@@ -112,13 +175,6 @@ function MapDialog({ initialPosition, onConfirm, onClose }) {
   const [draft, setDraft] = useState(initialPosition);
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState('');
-
-  // Escape closes the dialog without changing the form.
-  useEffect(() => {
-    const onKey = (event) => event.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const setDraftFrom = (lat, lng) => setDraft({ lat: round(lat), lng: round(lng) });
 
@@ -137,77 +193,85 @@ function MapDialog({ initialPosition, onConfirm, onClose }) {
     );
   }
 
-  // Rendered on <body> so it sits above the Edit Node modal as well.
-  return createPortal(
-    <div className="modal show d-block ss-map-dialog" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="modal-dialog modal-xl modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content border-0 shadow">
-          <div className="modal-header py-2">
-            <h5 className="modal-title h6 mb-0">Choose the hub location</h5>
-            <button type="button" className="btn-close" aria-label="Close" onClick={onClose} />
-          </div>
-          <div className="modal-body p-0">
-            <LoadError />
-            <div style={{ height: '65vh' }}>
-              <GoogleMap
-                mapId={MAP_ID}
-                defaultCenter={initialPosition ?? DEFAULT_CENTER}
-                defaultZoom={initialPosition ? PICKED_ZOOM : DEFAULT_ZOOM}
-                gestureHandling="greedy"
-                streetViewControl={false}
-                mapTypeControl={false}
-                clickableIcons={false}
-                onClick={(event) => {
-                  const latLng = event.detail.latLng;
-                  if (latLng) setDraftFrom(latLng.lat, latLng.lng);
+  // MUI stacks this dialog above the Edit Node dialog and closes it on Escape.
+  return (
+    <Dialog open onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ pr: 7 }}>
+        Choose the hub location
+        <IconButton aria-label="Close" onClick={onClose} sx={{ position: 'absolute', right: 12, top: 12 }}>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent dividers sx={{ p: 0 }}>
+        <LoadError />
+        <Box sx={{ height: '65vh', minHeight: 320 }}>
+          <GoogleMap
+            mapId={MAP_ID}
+            defaultCenter={initialPosition ?? DEFAULT_CENTER}
+            defaultZoom={initialPosition ? PICKED_ZOOM : DEFAULT_ZOOM}
+            gestureHandling="greedy"
+            streetViewControl={false}
+            mapTypeControl={false}
+            clickableIcons={false}
+            onClick={(event) => {
+              const latLng = event.detail.latLng;
+              if (latLng) setDraftFrom(latLng.lat, latLng.lng);
+            }}
+          >
+            {draft && (
+              <AdvancedMarker
+                position={draft}
+                draggable
+                onDragEnd={(event) => {
+                  if (event.latLng) setDraftFrom(event.latLng.lat(), event.latLng.lng());
                 }}
               >
-                {draft && (
-                  <AdvancedMarker
-                    position={draft}
-                    draggable
-                    onDragEnd={(event) => {
-                      if (event.latLng) setDraftFrom(event.latLng.lat(), event.latLng.lng());
-                    }}
-                  />
-                )}
-                <FollowPosition position={draft} />
-              </GoogleMap>
-            </div>
-          </div>
-          <div className="modal-footer justify-content-between py-2">
-            <div className="small text-muted">
-              {draft ? (
-                <span className="font-monospace">
-                  {draft.lat}, {draft.lng}
-                </span>
-              ) : (
-                'Click the map to place the hub, then drag the pin to fine-tune it.'
-              )}
-              {geoError && <div className="text-danger">{geoError}</div>}
-            </div>
-            <div className="d-flex gap-2">
-              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={locateMe} disabled={locating}>
-                <i className="bi bi-crosshair me-1" />
-                {locating ? 'Locating...' : 'Use my location'}
-              </button>
-              <button type="button" className="btn btn-sm btn-light" onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-warning fw-semibold"
-                disabled={!draft}
-                onClick={() => onConfirm(draft)}
-              >
-                Use this location
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
+                <BrandPin />
+              </AdvancedMarker>
+            )}
+            <FollowPosition position={draft} />
+          </GoogleMap>
+        </Box>
+      </DialogContent>
+      <DialogActions
+        sx={{ px: 3, py: 2, gap: 1, flexWrap: 'wrap', justifyContent: 'space-between' }}
+        disableSpacing
+      >
+        <Box sx={{ minWidth: 0 }}>
+          {draft ? (
+            <Typography variant="body2" sx={{ fontFamily: tokens.mono }}>
+              {draft.lat}, {draft.lng}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              Click the map to place the hub, then drag the pin to fine-tune it.
+            </Typography>
+          )}
+          {geoError && (
+            <Typography variant="caption" color="error">
+              {geoError}
+            </Typography>
+          )}
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<MyLocationIcon />}
+            onClick={locateMe}
+            disabled={locating}
+          >
+            {locating ? 'Locating...' : 'Use my location'}
+          </Button>
+          <Button color="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="contained" disabled={!draft} onClick={() => onConfirm(draft)}>
+            Use this location
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -215,51 +279,57 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
   const position = toPosition(latitude, longitude);
   const [open, setOpen] = useState(false);
 
+  // Side by side when the form is wide, stacked in narrow places such as the Edit dialog.
   return (
-    <div className="row g-2 align-items-stretch">
-      {MAPS_API_KEY ? (
-        <div className="col-12 col-md-5 col-lg-4">
+    <Box sx={{ containerType: 'inline-size' }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: '1fr',
+          '@container (min-width: 720px)': MAPS_API_KEY
+            ? { gridTemplateColumns: 'minmax(280px, 380px) minmax(0, 1fr)', alignItems: 'start' }
+            : {},
+        }}
+      >
+        {MAPS_API_KEY ? (
           <MapPreview position={position} onOpen={() => setOpen(true)} />
-        </div>
-      ) : (
-        <div className="col-12">
-          <div className="alert alert-secondary py-2 small mb-0">
-            <i className="bi bi-map me-1" />
+        ) : (
+          <Alert severity="info" icon={<MapOutlinedIcon fontSize="small" />}>
             Map picker is off: set VITE_GOOGLE_MAPS_API_KEY in web/.env to enable it. Enter the coordinates manually.
-          </div>
-        </div>
-      )}
+          </Alert>
+        )}
 
-      <div className="col-12 col-md d-flex flex-column justify-content-end">
-        <div className="row g-2">
-          <div className="col-6">
-            <label className="form-label small text-muted mb-1">Latitude</label>
-            <input
+        <Stack spacing={1}>
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="Latitude"
               type="number"
-              step="any"
-              min="-90"
-              max="90"
-              className="form-control form-control-sm"
+              size="small"
+              fullWidth
               value={latitude}
               onChange={(e) => onChange({ latitude: e.target.value, longitude })}
               required
+              slotProps={{ htmlInput: { step: 'any', min: -90, max: 90 } }}
             />
-          </div>
-          <div className="col-6">
-            <label className="form-label small text-muted mb-1">Longitude</label>
-            <input
+            <TextField
+              label="Longitude"
               type="number"
-              step="any"
-              min="-180"
-              max="180"
-              className="form-control form-control-sm"
+              size="small"
+              fullWidth
               value={longitude}
               onChange={(e) => onChange({ latitude, longitude: e.target.value })}
               required
+              slotProps={{ htmlInput: { step: 'any', min: -180, max: 180 } }}
             />
-          </div>
-        </div>
-      </div>
+          </Stack>
+          {MAPS_API_KEY && (
+            <Typography variant="caption" color="text.secondary">
+              Click the map to pick the hub's position, or type the coordinates.
+            </Typography>
+          )}
+        </Stack>
+      </Box>
 
       {open && (
         <MapDialog
@@ -271,6 +341,6 @@ export default function LocationPicker({ latitude, longitude, onChange }) {
           }}
         />
       )}
-    </div>
+    </Box>
   );
 }
